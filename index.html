@@ -55,6 +55,8 @@
   }
   #startOverlay h2, #startOverlay p{text-shadow:0 2px 8px rgba(0,0,0,0.8);}
   .painting-caption{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:14px;font-style:italic;}
+  .leitfrage{font-size:15px;font-weight:600;color:var(--accent-gold);max-width:640px;margin:2px auto 14px;line-height:1.4;font-style:italic;}
+  #leitfrageJournal{text-align:left;margin:6px 0 12px;max-width:none;}
   .overlay.show{display:flex;}
   .overlay h2{font-family:'Fraunces',serif;font-size:20px;margin:0 0 10px;}
   .overlay p{font-size:14px;line-height:1.6;color:#d8d2c2;max-width:520px;margin:0 0 16px;}
@@ -80,6 +82,10 @@
 
   .controls-line{margin-top:10px;font-size:12px;color:var(--muted);}
   .journal-tips{background:var(--panel-2);border:1px solid var(--accent-gold);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.6;color:var(--paper);}
+  .journal-connections{background:rgba(201,162,39,0.08);border:1px dashed var(--accent-gold);border-radius:8px;padding:12px 16px;margin-top:16px;}
+  .journal-connections h3{margin:0 0 8px;font-size:14px;color:var(--accent-gold);}
+  .journal-connections p{margin:0 0 8px;font-size:13px;line-height:1.6;}
+  .journal-connections .placeholder{color:var(--muted);font-style:italic;}
   .journal-tips b{color:var(--accent-gold);}
 
   .flugblatt-paper{background:#e8dcc0;color:#2b2416;border-radius:4px;padding:22px 26px;max-width:520px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.5);transform:rotate(-0.6deg);}
@@ -151,6 +157,7 @@
 
     <div class="overlay show" id="startOverlay">
       <h2>Sturm auf die Bastille</h2>
+      <h3 id="leitfrageStart" class="leitfrage"></h3>
       <p class="painting-caption">Zeitgenössisches Gemälde: Der Sturm auf die Bastille, 14. Juli 1789 (unbekannter Künstler)</p>
       <p><i>Was hier gleich passiert, hat der Revolutionär Camille Desmoulins in einem Brief an seinen Vater festgehalten.</i></p>
       <p>Paris, Sommer 1789. Du spielst einen jungen Revolutionär auf dem Platz vor der Bastille. Sprich mit den Menschen hier und durchsuche deine Umgebung nach nützlichen Hilfsmitteln. <b>Tipp: Sprich zuerst mit der Wache am Tor.</b></p>
@@ -228,6 +235,7 @@
         <h2>Dein Notizbuch</h2>
         <button class="btn-journal" id="closeJournalBtn">✕ Schließen</button>
       </div>
+      <h3 id="leitfrageJournal" class="leitfrage"></h3>
       <div id="journalTips" class="journal-tips"></div>
       <div class="journal-cols">
         <div class="journal-col ausloeser">
@@ -242,6 +250,10 @@
           <h3>Ergebnis</h3>
           <div id="journalErgebnis"></div>
         </div>
+      </div>
+      <div id="journalConnections" class="journal-connections">
+        <h3>Wie hängt das zusammen?</h3>
+        <div id="journalConnectionsBody"></div>
       </div>
       <div class="controls-line">Schließen mit "I", dem Knopf oben oder Escape</div>
     </div>
@@ -270,6 +282,9 @@ let VIEW_H = 480;
 const ZOOM = 2;
 
 const REQUIRED_FACTS = { ausloeser: 4, verlauf: 2 };
+
+// Leitfrage: einmal definiert, wird im Prolog UND im Notizbuch verwendet.
+const LEITFRAGE = "Warum kam es am 14. Juli 1789 zum Sturm auf die Bastille – und was änderte sich dadurch?";
 const WEAPON_REQUIRED = true;
 
 // Münze beim Brunnen
@@ -1528,6 +1543,7 @@ function renderRucksack(){
 }
 
 function renderJournal(){
+  document.getElementById("leitfrageJournal").textContent = LEITFRAGE;
   const tipsEl = document.getElementById("journalTips");
   const tips = [];
   tips.push("<b>Auslöser:</b> " + collected.ausloeser.size + "/" + REQUIRED_FACTS.ausloeser + " Personen auf dem Platz befragt.");
@@ -1622,6 +1638,20 @@ function renderJournal(){
       container.appendChild(div);
     }
   });
+
+  const connBody = document.getElementById("journalConnectionsBody");
+  const statements = [];
+  if (collected.ausloeser.has("bauer") && collected.ausloeser.has("buergerin") && collected.ausloeser.has("adliger")){
+    statements.push("Ständegesellschaft (Bauer), Gewaltenteilung (Sophie) und der Abstimmungsstreit (Graf) drehen sich alle um dieselbe Frage: <b>Wer darf mitbestimmen?</b>");
+  }
+  if (collected.verlauf.has("bote") && collected.ausloeser.has("buergerin")){
+    statements.push("Der Ballhausschwur (Bote) ist das Versprechen einer neuen Verfassung – Gewaltenteilung (Sophie) ist einer ihrer wichtigsten Grundgedanken.");
+  }
+  if (statements.length === 0){
+    connBody.innerHTML = "<p class='placeholder'>Wird sichtbar, sobald du mehr herausgefunden hast.</p>";
+  } else {
+    connBody.innerHTML = statements.map(s => "<p>" + s + "</p>").join("");
+  }
 }
 
 /* =========================================================
@@ -1821,6 +1851,8 @@ function finishQuiz(){
 /* =========================================================
    TEIL 7: START, GAME LOOP, RENDERING
    ========================================================= */
+
+document.getElementById("leitfrageStart").textContent = LEITFRAGE;
 
 if (hasSave()){
   document.getElementById("saveFoundBox").style.display = "block";
