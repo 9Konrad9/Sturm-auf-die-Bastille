@@ -125,14 +125,7 @@
     <canvas id="game" width="800" height="480"></canvas>
 
     <div class="hud">
-      <div class="hud-facts">
-        <div class="fact-pill"><span class="dot dot-ausloeser"></span><span id="countAusloeser">0/4</span></div>
-        <div class="fact-pill"><span class="dot dot-verlauf"></span><span id="countVerlauf">0/3</span></div>
-        <div class="fact-pill"><span class="dot dot-ergebnis"></span><span id="countErgebnis">0/1</span></div>
-        <div class="fact-pill inv" id="coinPill"><span class="dot dot-coin"></span><span>Münze</span></div>
-        <div class="fact-pill inv" id="weaponPill"><span class="dot dot-weapon"></span><span>Musketen</span></div>
-      </div>
-      <div style="display:flex;gap:6px;pointer-events:auto;">
+      <div style="display:flex;gap:6px;pointer-events:auto;margin-left:auto;">
         <button class="btn-journal" id="openRucksackBtn">🎒 Rucksack</button>
         <button class="btn-journal" id="openJournalBtn">📖 Notizbuch</button>
       </div>
@@ -1709,11 +1702,7 @@ function hasSave(){
 }
 
 function updateHud(){
-  document.getElementById("countAusloeser").textContent = collected.ausloeser.size + "/" + REQUIRED_FACTS.ausloeser;
-  document.getElementById("countVerlauf").textContent = collected.verlauf.size + "/" + REQUIRED_FACTS.verlauf;
-  document.getElementById("countErgebnis").textContent = collected.ergebnis.size + "/1";
-  document.getElementById("coinPill").classList.toggle("active", inventory.coin);
-  document.getElementById("weaponPill").classList.toggle("active", inventory.weapon);
+  // Die Fortschrittsanzeige läuft jetzt über Notizbuch und Rucksack statt über die HUD-Leiste.
   saveGame();
 }
 
