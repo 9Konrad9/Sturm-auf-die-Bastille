@@ -160,7 +160,7 @@
       <h2>Sturm auf die Bastille</h2>
       <p class="painting-caption">Zeitgenössisches Gemälde: Der Sturm auf die Bastille, 14. Juli 1789 (unbekannter Künstler)</p>
       <p><i>Was hier gleich passiert, hat der Revolutionär Camille Desmoulins in einem Brief an seinen Vater festgehalten.</i></p>
-      <p>Paris, Sommer 1789. Du spielst einen jungen Revolutionär auf dem Platz vor der Bastille. <b>Tipp: Sprich zuerst mit der Wache am Tor</b> – sie sagt dir, was zu tun ist. Sprich mit allen Menschen hier, sammle Wissen über die Ursachen der Unruhen und die Ereignisse dieser Tage. Halte auch Ausschau nach einer Münze und einem versteckten Waffendepot – erst mit Wissen und Musketen öffnet sich das Tor.</p>
+      <p>Paris, Sommer 1789. Du spielst einen jungen Revolutionär auf dem Platz vor der Bastille. Sprich mit den Menschen hier und durchsuche deine Umgebung nach nützlichen Hilfsmitteln. <b>Tipp: Sprich zuerst mit der Wache am Tor.</b></p>
       <div id="saveFoundBox" style="display:none;background:rgba(201,162,39,0.12);border:1px solid var(--accent-gold);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;">
         Es wurde ein gespeicherter Fortschritt gefunden. Ist das dein eigener Spielstand?
       </div>
@@ -227,6 +227,7 @@
       </div>
       <div id="rucksackItems"></div>
       <div class="controls-line">Tippe auf ein Dokument, um es nochmal zu lesen.</div>
+      <div class="controls-line" style="margin-top:4px;">🍟 Gerücht unter Historiker:innen: Wer <i>wirklich</i> jede Kiste durchsucht, findet vielleicht etwas völlig Unhistorisches...</div>
     </div>
 
     <div id="journalPanel">
@@ -292,7 +293,7 @@ const COIN_SPOT_POSITIONS_ORIG = [
 
 // Zwei durchsuchbare Verstecke. Nur eines enthält wirklich die Musketen –
 // fest an dieser Stelle, kein Zufall mehr.
-const DEPOT_DECOY_ORIG = { x: 150, y: 780 }; // deutlich abgesetzt von Münzversteck 6 (263,678)
+// (Depot-Attrappe entfernt – nur noch der feste Waffendepot-Ort bleibt.)
 const DEPOT_REAL_ORIG  = { x: 1980, y: 1430 };
 
 const NPCS = [
@@ -392,7 +393,7 @@ const ENDING_SLIDES = [
 const NOTICEBOARD_SPOT_ORIG = { x: 2100, y: 830 };
 
 // Kleines Easter Egg – kein Einfluss aufs Spiel, nur zum Schmunzeln.
-const EASTER_EGG_SPOT_ORIG = { x: 1600, y: 1050 };
+// (Das Easter Egg steckt jetzt in einem der Münzverstecke, siehe unten.)
 
 const MENGE_QUESTIONS = [
   { id: "zusammensetzung", prompt: "Erkläre, warum die Vorstellung einer wilden, unorganisierten Menge die Erstürmer der Bastille nicht richtig beschreibt." }
@@ -757,11 +758,14 @@ let gateOpen = false;
 
 const COIN_SPOTS = COIN_SPOT_POSITIONS_ORIG.map(scalePoint);
 let coinSpotWithCoin = Math.floor(Math.random() * COIN_SPOTS.length);
+// Easter Egg: zufällig einer der LEEREN Verstecke bekommt die Pommes statt einer normalen Leer-Zeile.
+let pommesSpotIndex = coinSpotWithCoin;
+while (pommesSpotIndex === coinSpotWithCoin){
+  pommesSpotIndex = Math.floor(Math.random() * COIN_SPOTS.length);
+}
 let coinFound = false;
 
-const DEPOT_DECOY = scalePoint(DEPOT_DECOY_ORIG);
 const NOTICEBOARD_SPOT = scalePoint(NOTICEBOARD_SPOT_ORIG);
-const EASTER_EGG_SPOT = scalePoint(EASTER_EGG_SPOT_ORIG);
 const DEPOT_REAL = scalePoint(DEPOT_REAL_ORIG);
 
 const FOREGROUND_OVERLAYS = FOREGROUND_OVERLAYS_ORIG.map(o => {
@@ -1044,9 +1048,10 @@ function guardLines(){
   if (totalNothing){
     return [
       "Halt! Niemand kommt hier so einfach hinein.",
-      "Wenn ihr wirklich etwas bewirken wollt: Sprecht mit den vier Menschen hier auf dem Platz.",
-      "Haltet außerdem Ausschau nach einer versteckten Münze und einem Waffendepot.",
-      "Erst mit genug Wissen und Musketen lasse ich euch durch."
+      "Sprecht mit den Menschen hier auf dem Platz, und haltet die Augen offen – irgendwo gibt es sicher Nützliches zu finden.",
+      "Wisst ihr nicht mehr weiter? Euer Notizbuch zeigt euch, was ihr noch herausfinden müsst.",
+      "Und euer Rucksack zeigt euch, was ihr schon gefunden habt – und was euch noch fehlt.",
+      "Erst mit genug Wissen und den richtigen Mitteln lasse ich euch durch."
     ];
   }
   const missing = [];
@@ -1079,7 +1084,6 @@ function findNearbyNPC(){
 
 function findNearbyDepot(){
   if (nearDistance(player.x, player.y, DEPOT_REAL.x, DEPOT_REAL.y) < REACH) return "real";
-  if (nearDistance(player.x, player.y, DEPOT_DECOY.x, DEPOT_DECOY.y) < REACH) return "decoy";
   return null;
 }
 
@@ -1093,10 +1097,6 @@ function findNearbyCoinSpot(){
 
 function findNearbyNoticeboard(){
   return nearDistance(player.x, player.y, NOTICEBOARD_SPOT.x, NOTICEBOARD_SPOT.y) < REACH;
-}
-
-function findNearbyEasterEgg(){
-  return nearDistance(player.x, player.y, EASTER_EGG_SPOT.x, EASTER_EGG_SPOT.y) < REACH;
 }
 
 const flugblattOverlay = document.getElementById("flugblattOverlay");
@@ -1265,6 +1265,11 @@ function searchCoinSpot(index){
     });
   } else if (index === coinSpotWithCoin && coinFound){
     openDialogue("Durchsucht", ["Hier war die Münze – die hast du schon eingesteckt."], null);
+  } else if (index === pommesSpotIndex){
+    openDialogue("???", [
+      "Zwischen alten Fässern: eine kleine, unhistorische Zeitreise – eine Portion Pommes!",
+      "Sehr verdächtig für 1789... aber ein Gruß an alle 'Pommes' da draußen! 🍟"
+    ], null);
   } else {
     const line = EMPTY_SPOT_LINES[index % EMPTY_SPOT_LINES.length];
     openDialogue("Durchsucht", [line], null);
@@ -1272,17 +1277,13 @@ function searchCoinSpot(index){
 }
 
 function searchDepot(type){
-  if (type === "real"){
-    if (inventory.weapon){
-      openDialogue("Verstecktes Waffendepot", ["Hier war es – die Musketen habt ihr bereits eingesammelt."], null);
-    } else {
-      openDialogue("Verstecktes Waffendepot", [
-        "In der hinteren Kiste versteckt: mehrere Musketen!",
-        "Genug, um sich den Wachen der Bastille entgegenzustellen."
-      ], () => { inventory.weapon = true; updateGateState(); updateHud(); });
-    }
+  if (inventory.weapon){
+    openDialogue("Verstecktes Waffendepot", ["Hier war es – die Musketen habt ihr bereits eingesammelt."], null);
   } else {
-    openDialogue("Fässer durchsucht", ["Nur leere Fässer und etwas verschüttetes Mehl. Hier gibt es nichts Brauchbares."], null);
+    openDialogue("Verstecktes Waffendepot", [
+      "In der hinteren Kiste versteckt: mehrere Musketen!",
+      "Genug, um sich den Wachen der Bastille entgegenzustellen."
+    ], () => { inventory.weapon = true; updateGateState(); updateHud(); });
   }
 }
 
@@ -1300,13 +1301,6 @@ function interact(){
     const coinSpot = findNearbyCoinSpot();
     if (coinSpot !== null){ searchCoinSpot(coinSpot); return; }
     if (findNearbyNoticeboard()){ openFlugblatt(); return; }
-    if (findNearbyEasterEgg()){
-      openDialogue("???", [
-        "Du entdeckst eine kleine, unhistorische Zeitreise: eine Portion Pommes zwischen den Pflastersteinen.",
-        "Sehr verdächtig für 1789... aber ein Gruß an alle 'Pommes' da draußen! 🍟"
-      ], null);
-      return;
-    }
     return;
   }
 
@@ -1663,6 +1657,7 @@ function saveGame(){
       breadAttempted: breadAttempted,
       coinFound: coinFound,
       coinSpotWithCoin: coinSpotWithCoin,
+      pommesSpotIndex: pommesSpotIndex,
       journalAnswers: journalAnswers,
       gameState: safeGameState,
       gameCompleted: gameCompleted,
@@ -1691,6 +1686,7 @@ function loadGame(){
     breadAttempted = !!data.breadAttempted;
     coinFound = !!data.coinFound;
     if (typeof data.coinSpotWithCoin === "number") coinSpotWithCoin = data.coinSpotWithCoin;
+    if (typeof data.pommesSpotIndex === "number") pommesSpotIndex = data.pommesSpotIndex;
     Object.keys(data.journalAnswers || {}).forEach(k => { journalAnswers[k] = data.journalAnswers[k]; });
     gameState = "playing";
     gameCompleted = !!data.gameCompleted;
