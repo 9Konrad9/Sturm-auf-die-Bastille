@@ -48,11 +48,24 @@
   #dialogueBox .hint{margin-top:8px;font-size:11px;color:var(--muted);}
 
   .overlay{position:absolute;inset:0;background:rgba(10,10,9,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+  #startOverlay{
+    background-image: linear-gradient(rgba(10,10,9,0.45), rgba(10,10,9,0.88) 75%), url('assets/sturm_gemaelde.png');
+    background-size: cover;
+    background-position: center 30%;
+  }
+  #startOverlay h2, #startOverlay p{text-shadow:0 2px 8px rgba(0,0,0,0.8);}
+  .painting-caption{font-size:11px;color:var(--muted);margin-top:-8px;margin-bottom:14px;font-style:italic;}
   .overlay.show{display:flex;}
   .overlay h2{font-family:'Fraunces',serif;font-size:20px;margin:0 0 10px;}
   .overlay p{font-size:14px;line-height:1.6;color:#d8d2c2;max-width:520px;margin:0 0 16px;}
 
   #journalPanel{position:absolute;inset:0;background:rgba(10,10,9,0.96);display:none;flex-direction:column;padding:18px;overflow-y:auto;}
+  #rucksackPanel{position:absolute;inset:0;background:rgba(10,10,9,0.96);display:none;flex-direction:column;padding:18px;overflow-y:auto;}
+  #rucksackPanel.show{display:flex;}
+  .rucksack-item{background:var(--panel-2);border:1px solid #4a4738;border-radius:8px;padding:12px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .rucksack-item.locked{opacity:0.45;}
+  .rucksack-item-title{font-size:13.5px;font-weight:600;}
+  .rucksack-item-status{font-size:12px;color:var(--muted);margin-top:2px;}
   #journalPanel.show{display:flex;}
   #journalPanel h2{font-family:'Fraunces',serif;font-size:18px;margin:0 0 12px;}
   .journal-cols{display:flex;gap:12px;flex:1;}
@@ -108,11 +121,6 @@
 </head>
 <body>
 <div id="app">
-  <div class="header-row">
-    <h1>Sturm auf die Bastille</h1>
-    <div class="subtitle">Pfeiltasten/WASD oder die Steuerung unten links. Leertaste oder der runde Knopf zum Interagieren. "I" oder das Buch-Symbol fürs Wissensbuch.</div>
-  </div>
-
   <div id="gameWrap">
     <canvas id="game" width="800" height="480"></canvas>
 
@@ -124,7 +132,10 @@
         <div class="fact-pill inv" id="coinPill"><span class="dot dot-coin"></span><span>Münze</span></div>
         <div class="fact-pill inv" id="weaponPill"><span class="dot dot-weapon"></span><span>Musketen</span></div>
       </div>
-      <button class="btn-journal" id="openJournalBtn">📖 Wissensbuch</button>
+      <div style="display:flex;gap:6px;pointer-events:auto;">
+        <button class="btn-journal" id="openRucksackBtn">🎒 Rucksack</button>
+        <button class="btn-journal" id="openJournalBtn">📖 Notizbuch</button>
+      </div>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -147,6 +158,7 @@
 
     <div class="overlay show" id="startOverlay">
       <h2>Sturm auf die Bastille</h2>
+      <p class="painting-caption">Zeitgenössisches Gemälde: Der Sturm auf die Bastille, 14. Juli 1789 (unbekannter Künstler)</p>
       <p><i>Was hier gleich passiert, hat der Revolutionär Camille Desmoulins in einem Brief an seinen Vater festgehalten.</i></p>
       <p>Paris, Sommer 1789. Du spielst einen jungen Revolutionär auf dem Platz vor der Bastille. <b>Tipp: Sprich zuerst mit der Wache am Tor</b> – sie sagt dir, was zu tun ist. Sprich mit allen Menschen hier, sammle Wissen über die Ursachen der Unruhen und die Ereignisse dieser Tage. Halte auch Ausschau nach einer Münze und einem versteckten Waffendepot – erst mit Wissen und Musketen öffnet sich das Tor.</p>
       <div id="saveFoundBox" style="display:none;background:rgba(201,162,39,0.12);border:1px solid var(--accent-gold);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;">
@@ -165,10 +177,22 @@
     </div>
 
     <div class="overlay" id="textTaskOverlay">
-      <h2 id="textTaskHeading">Frage 1 von 2</h2>
-      <p id="textTaskPrompt" style="max-width:480px;"></p>
-      <textarea id="textTaskInput" rows="4" style="width:100%;max-width:480px;background:var(--panel-2);color:var(--paper);border:1px solid #4a4738;border-radius:6px;padding:10px;font-family:inherit;font-size:14px;"></textarea>
-      <button class="btn" id="textTaskNextBtn" style="margin-top:14px;">Weiter</button>
+      <div style="display:flex; gap:22px; width:100%; max-width:920px; align-items:flex-start; justify-content:center; flex-wrap:wrap;">
+        <div id="textTaskLeft" style="flex:1; min-width:260px; max-width:420px;">
+          <h2 id="textTaskHeading">Frage 1 von 2</h2>
+          <p id="textTaskPrompt"></p>
+          <textarea id="textTaskInput" rows="4" style="width:100%;background:var(--panel-2);color:var(--paper);border:1px solid #4a4738;border-radius:6px;padding:10px;font-family:inherit;font-size:14px;"></textarea>
+          <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+            <button class="btn" id="textTaskNextBtn">Weiter</button>
+            <button class="btn" id="textTaskCancelBtn" style="border-color:#8f8a7c;">Später beantworten</button>
+          </div>
+        </div>
+        <div id="textTaskRight" class="flugblatt-paper" style="flex:1; min-width:260px; max-width:420px; max-height:65vh; overflow-y:auto; display:none;">
+          <h2 id="textTaskSourceTitle" style="font-size:15px;"></h2>
+          <blockquote id="textTaskSourceQuote"></blockquote>
+          <p class="flugblatt-source" id="textTaskSourceCite"></p>
+        </div>
+      </div>
     </div>
 
     <div class="overlay" id="noticeboardChoiceOverlay">
@@ -193,11 +217,21 @@
       <p id="quizQuestion"></p>
       <div id="quizOptions" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;"></div>
       <div id="quizResult" style="display:none;margin-top:14px;"></div>
+      <button class="btn" id="closeQuizBtn" style="display:none;margin-top:14px;">Weiter erkunden</button>
+    </div>
+
+    <div id="rucksackPanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Dein Rucksack</h2>
+        <button class="btn-journal" id="closeRucksackBtn">✕ Schließen</button>
+      </div>
+      <div id="rucksackItems"></div>
+      <div class="controls-line">Tippe auf ein Dokument, um es nochmal zu lesen.</div>
     </div>
 
     <div id="journalPanel">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h2>Dein Wissensbuch</h2>
+        <h2>Dein Notizbuch</h2>
         <button class="btn-journal" id="closeJournalBtn">✕ Schließen</button>
       </div>
       <div id="journalTips" class="journal-tips"></div>
@@ -258,7 +292,7 @@ const COIN_SPOT_POSITIONS_ORIG = [
 
 // Zwei durchsuchbare Verstecke. Nur eines enthält wirklich die Musketen –
 // fest an dieser Stelle, kein Zufall mehr.
-const DEPOT_DECOY_ORIG = { x: 250, y: 600 };
+const DEPOT_DECOY_ORIG = { x: 150, y: 780 }; // deutlich abgesetzt von Münzversteck 6 (263,678)
 const DEPOT_REAL_ORIG  = { x: 1980, y: 1430 };
 
 const NPCS = [
@@ -297,9 +331,7 @@ const NPCS = [
     factText: "Denker der Aufklärung wie Rousseau, Voltaire und Montesquieu forderten Freiheit, Gleichheit und Mitbestimmung. Montesquieu forderte insbesondere eine Gewaltenteilung zwischen gesetzgebender, ausführender und richterlicher Gewalt, um Machtmissbrauch zu verhindern. Diese Ideen verbreiteten sich in Pariser Salons und stellten die absolute Macht des Königs infrage.",
     dialogue: [
       "Wir hatten doch neulich im Unterricht über die Aufklärung gesprochen, oder? Vernunft statt Aberglauben, Freiheit und Gleichheit für alle Menschen.",
-      "In meinem Salon habe ich letzte Woche mit Freunden über einen Denker namens Montesquieu diskutiert.",
-      "Er fordert, die Macht des Staates aufzuteilen: in eine gesetzgebende, eine ausführende und eine richterliche Gewalt – damit niemand allein über alles bestimmen kann.",
-      "Genau das fehlt uns doch bei einem König, der ganz allein entscheidet, findest du nicht?"
+      "In meinem Salon habe ich letzte Woche mit Freunden über einen Denker namens Montesquieu diskutiert – hier, lies selbst, was er 1748 geschrieben hat:"
     ]
   },
   {
@@ -410,6 +442,16 @@ const BUERGERIN_QUESTIONS = [
   { id: "gewaltenteilung", prompt: "Stelle das Prinzip der Gewaltenteilung nach Montesquieu in eigenen Worten dar." },
   { id: "bedeutung", prompt: "Erkläre, warum diese Idee eine Gefahr für die absolute Monarchie des Königs war." }
 ];
+
+const FLUGBLATT_MONTESQUIEU = {
+  title: "Buch: Vom Geist der Gesetze",
+  quote: "In seiner Schrift von 1748 äußert sich Montesquieu:\nDie politische Freiheit ist nur unter maßvollen Regierungen anzutreffen. Indes besteht sie selbst in maßvollen Staaten nicht immer, sondern nur dann, wenn man die Macht nicht mißbraucht. Eine ewige Erfahrung lehrt jedoch, daß jeder Mensch, der Macht hat, dazu getrieben wird, sie zu mißbrauchen. Er geht immer weiter, bis er an die Grenzen stößt [...]. Alles wäre verloren, wenn ein und derselbe Mann beziehungsweise die gleiche Körperschaft [...] folgende drei Machtvollkommenheiten ausübte: Gesetze erlassen, öffentliche Beschlüsse in die Tat umsetzen, Verbrechen und private Streitfälle aburteilen.",
+  source: "(Charles de Secondat Montesquieu, Vom Geist der Gesetze, Stuttgart 1965, S. 210–212, übers. von Kurt Weigand.)",
+  tasks: [
+    "Stelle das Prinzip der Gewaltenteilung nach Montesquieu in eigenen Worten dar.",
+    "Erkläre, warum diese Idee eine Gefahr für die absolute Monarchie des Königs war."
+  ]
+};
 
 const ADLIGER_QUESTIONS = [
   { id: "abstimmung", prompt: "Erkläre, warum der Dritte Stand auf eine Abstimmung nach Köpfen bestand." }
@@ -875,7 +917,7 @@ function collides(feetX, feetY){
 }
 
 function updatePlayer(){
-  if (dialogueOpen || journalOpen || flugblattOpen || textTaskOpen || noticeboardChoiceOpen) return;
+  if (dialogueOpen || journalOpen || rucksackOpen || flugblattOpen || textTaskOpen || noticeboardChoiceOpen) return;
   let dx = 0, dy = 0;
   if (keys["arrowleft"] || keys["a"]) dx = -player.speed;
   if (keys["arrowright"] || keys["d"]) dx = player.speed;
@@ -925,6 +967,7 @@ let boteStage = "not_started";
 let bauerStage = "not_started";
 let flugblattOpen = false;
 let currentFlugblattFor = null;
+const docsSeen = { bote: false, bauer: false, buergerin: false, epilog: false };
 let textTaskOpen = false;
 const journalAnswers = {}; // { npcId: { fragenId: "Antworttext" } }
 
@@ -952,6 +995,7 @@ let dialogueOpen = false;
 let journalOpen = false;
 let currentDialogue = null;
 let gameState = "start";
+let gameCompleted = false; // true, sobald Ending+Nachwort+Quiz einmal abgeschlossen wurden
 
 const dlgBox = document.getElementById("dialogueBox");
 const dlgName = document.getElementById("dlgName");
@@ -1058,6 +1102,10 @@ function showFlugblattContent(fb, forWho){
   flugblattOpen = true;
   currentFlugblattFor = forWho;
   flugblattOverlay.classList.add("show");
+  if (docsSeen.hasOwnProperty(forWho)){
+    docsSeen[forWho] = true;
+    saveGame();
+  }
 }
 
 let noticeboardChoiceOpen = false;
@@ -1105,19 +1153,27 @@ function closeFlugblatt(){
   if (currentFlugblattFor === "bote" && boteStage === "hinted") boteStage = "flyer_read";
   if (currentFlugblattFor === "bauer" && bauerStage === "hinted") bauerStage = "flyer_read";
   const wasEpilog = currentFlugblattFor === "epilog";
+  const wasBuergerin = currentFlugblattFor === "buergerin";
   currentFlugblattFor = null;
   if (wasEpilog){
     openTextTask(DESMOULINS_QUESTIONS, (answers) => {
       journalAnswers.epilog = answers;
       saveGame();
       startQuiz();
-    });
+    }, FLUGBLATT_DESMOULINS);
+  }
+  if (wasBuergerin){
+    openTextTask(BUERGERIN_QUESTIONS, (answers) => {
+      journalAnswers.buergerin = answers;
+      saveGame();
+      showToast("Antworten gespeichert");
+    }, FLUGBLATT_MONTESQUIEU);
   }
 }
 document.getElementById("closeFlugblattBtn").addEventListener("click", closeFlugblatt);
 
 /* Textaufgaben-System: offene Eingabefelder statt Multiple-Choice.
-   Antworten werden gespeichert und im Wissensbuch angezeigt. */
+   Antworten werden gespeichert und im Notizbuch angezeigt. */
 let textTaskQuestions = [];
 let textTaskIndex = 0;
 let textTaskAnswers = {};
@@ -1128,13 +1184,22 @@ const textTaskPrompt = document.getElementById("textTaskPrompt");
 const textTaskInput = document.getElementById("textTaskInput");
 const textTaskNextBtn = document.getElementById("textTaskNextBtn");
 
-function openTextTask(questions, onFinish){
+function openTextTask(questions, onFinish, sourceDoc){
   textTaskQuestions = questions;
   textTaskIndex = 0;
   textTaskAnswers = {};
   textTaskOnFinish = onFinish;
   textTaskOpen = true;
   textTaskOverlay.classList.add("show");
+  const rightEl = document.getElementById("textTaskRight");
+  if (sourceDoc){
+    document.getElementById("textTaskSourceTitle").textContent = sourceDoc.title;
+    document.getElementById("textTaskSourceQuote").textContent = sourceDoc.quote;
+    document.getElementById("textTaskSourceCite").textContent = sourceDoc.source;
+    rightEl.style.display = "block";
+  } else {
+    rightEl.style.display = "none";
+  }
   renderTextTaskQuestion();
 }
 function renderTextTaskQuestion(){
@@ -1159,6 +1224,13 @@ textTaskNextBtn.addEventListener("click", () => {
     textTaskOnFinish = null;
     if (cb) cb(textTaskAnswers);
   }
+});
+document.getElementById("textTaskCancelBtn").addEventListener("click", () => {
+  textTaskOpen = false;
+  textTaskOverlay.classList.remove("show");
+  textTaskOnFinish = null;
+  if (gameState !== "playing") gameState = "playing";
+  showToast("Du kannst später weitermachen");
 });
 
 
@@ -1202,7 +1274,7 @@ function searchDepot(type){
 }
 
 function interact(){
-  if (textTaskOpen || noticeboardChoiceOpen) return;
+  if (textTaskOpen || noticeboardChoiceOpen || rucksackOpen) return;
   if (flugblattOpen){ closeFlugblatt(); return; }
   if (dialogueOpen){ advanceDialogue(); return; }
   if (journalOpen) return;
@@ -1223,6 +1295,10 @@ function interact(){
     return;
   }
   if (npc.id === "launay"){
+    if (gameCompleted){
+      openDialogue(npc.name, ["Die Bastille ist gefallen. Der Rest ist Geschichte."], null);
+      return;
+    }
     openDialogue(npc.name, [
       "Ihr wollt die Bastille also wirklich einnehmen...",
       "Ich habe keine Wahl mehr. Nehmt die Festung — ich ergebe mich."
@@ -1248,7 +1324,7 @@ function interact(){
           bauerStage = "answered";
           saveGame();
           showToast("Antworten gespeichert");
-        });
+        }, FLUGBLATT_2);
       });
     } else {
       openDialogue(npc.name, ["Danke, dass du mir das erklärt hast."], null);
@@ -1299,7 +1375,7 @@ function interact(){
           updateGateState();
           updateHud();
           showToast("Antworten gespeichert");
-        });
+        }, FLUGBLATT);
       });
     } else {
       openDialogue(npc.name, ["Danke nochmal für deine Aufmerksamkeit. Die Sache mit der Nationalversammlung bleibt wichtig."], null);
@@ -1312,11 +1388,7 @@ function interact(){
         collected.ausloeser.add("buergerin");
         updateGateState();
         updateHud();
-        openTextTask(BUERGERIN_QUESTIONS, (answers) => {
-          journalAnswers.buergerin = answers;
-          saveGame();
-          showToast("Antworten gespeichert");
-        });
+        showFlugblattContent(FLUGBLATT_MONTESQUIEU, "buergerin");
       });
     } else {
       openDialogue(npc.name, ["Denk mal über die Gewaltenteilung nach – das wird noch wichtig werden."], null);
@@ -1368,6 +1440,69 @@ function toggleJournal(){
 document.getElementById("openJournalBtn").addEventListener("click", toggleJournal);
 document.getElementById("closeJournalBtn").addEventListener("click", toggleJournal);
 
+let rucksackOpen = false;
+const rucksackPanel = document.getElementById("rucksackPanel");
+function toggleRucksack(){
+  if (gameState !== "playing" && gameState !== "done" && !rucksackOpen) return;
+  rucksackOpen = !rucksackOpen;
+  rucksackPanel.classList.toggle("show", rucksackOpen);
+  if (rucksackOpen) renderRucksack();
+}
+document.getElementById("openRucksackBtn").addEventListener("click", toggleRucksack);
+document.getElementById("closeRucksackBtn").addEventListener("click", toggleRucksack);
+
+function rucksackReadDoc(fb, key){
+  rucksackOpen = false;
+  rucksackPanel.classList.remove("show");
+  if (key === "epilog" && !journalAnswers.epilog){
+    // Noch nicht beantwortet: nach dem Lesen direkt zu den Fragen (wie beim ersten Mal).
+    showFlugblattContent(fb, "epilog");
+  } else {
+    showFlugblattContent(fb, "readonly_" + key);
+  }
+}
+
+function renderRucksack(){
+  const el = document.getElementById("rucksackItems");
+  el.innerHTML = "";
+
+  const addItem = (title, statusText, unlocked, onRead) => {
+    const div = document.createElement("div");
+    div.className = "rucksack-item" + (unlocked ? "" : " locked");
+    const left = document.createElement("div");
+    const t = document.createElement("div");
+    t.className = "rucksack-item-title";
+    t.textContent = title;
+    const s = document.createElement("div");
+    s.className = "rucksack-item-status";
+    s.textContent = statusText;
+    left.appendChild(t); left.appendChild(s);
+    div.appendChild(left);
+    if (unlocked && onRead){
+      const btn = document.createElement("button");
+      btn.className = "btn";
+      btn.textContent = "Lesen";
+      btn.addEventListener("click", onRead);
+      div.appendChild(btn);
+    }
+    el.appendChild(div);
+  };
+
+  addItem("Münze", inventory.coin ? "in deiner Tasche" : (coinFound ? "beim Bäcker ausgegeben" : "noch nicht gefunden"), coinFound, null);
+  addItem("Musketen", inventory.weapon ? "im Waffendepot gefunden" : "noch nicht gefunden", inventory.weapon, null);
+  addItem(FLUGBLATT.title, docsSeen.bote ? "gefunden am Anschlagbrett" : "noch nicht gefunden", docsSeen.bote,
+    () => rucksackReadDoc(FLUGBLATT, "bote"));
+  addItem(FLUGBLATT_2.title, docsSeen.bauer ? "gefunden am Anschlagbrett" : "noch nicht gefunden", docsSeen.bauer,
+    () => rucksackReadDoc(FLUGBLATT_2, "bauer"));
+  addItem(FLUGBLATT_MONTESQUIEU.title, docsSeen.buergerin ? "von Sophie gezeigt bekommen" : "noch nicht gesehen", docsSeen.buergerin,
+    () => rucksackReadDoc(FLUGBLATT_MONTESQUIEU, "buergerin"));
+  addItem(FLUGBLATT_DESMOULINS.title,
+    !docsSeen.epilog ? "noch nicht verfügbar (erst nach dem Sturm)" :
+    !journalAnswers.epilog ? "gelesen – Fragen noch offen, hier beantworten" : "gelesen und beantwortet",
+    docsSeen.epilog,
+    () => rucksackReadDoc(FLUGBLATT_DESMOULINS, "epilog"));
+}
+
 function renderJournal(){
   const tipsEl = document.getElementById("journalTips");
   const tips = [];
@@ -1399,7 +1534,7 @@ function renderJournal(){
           const ansBlock = document.createElement("div");
           ansBlock.className = "journal-answers";
           const label = document.createElement("b");
-          const sourceTitle = id === "bote" ? FLUGBLATT.title : id === "bauer" ? FLUGBLATT_2.title : id === "buergerin" ? "Gespräch mit Sophie: Gewaltenteilung" : id === "adliger" ? "Gespräch mit dem Grafen: Abstimmung nach Ständen oder Köpfen" : "";
+          const sourceTitle = id === "bote" ? FLUGBLATT.title : id === "bauer" ? FLUGBLATT_2.title : id === "buergerin" ? FLUGBLATT_MONTESQUIEU.title : id === "adliger" ? "Gespräch mit dem Grafen: Abstimmung nach Ständen oder Köpfen" : "";
           label.textContent = "Deine Notizen (" + sourceTitle + "):";
           ansBlock.appendChild(label);
           const questionSet = id === "bote" ? BOTE_QUESTIONS : id === "bauer" ? BAUER_QUESTIONS : id === "buergerin" ? BUERGERIN_QUESTIONS : id === "adliger" ? ADLIGER_QUESTIONS : [];
@@ -1492,7 +1627,9 @@ function saveGame(){
       coinFound: coinFound,
       coinSpotWithCoin: coinSpotWithCoin,
       journalAnswers: journalAnswers,
-      gameState: safeGameState
+      gameState: safeGameState,
+      gameCompleted: gameCompleted,
+      docsSeen: docsSeen
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   } catch (e) {
@@ -1518,7 +1655,9 @@ function loadGame(){
     coinFound = !!data.coinFound;
     if (typeof data.coinSpotWithCoin === "number") coinSpotWithCoin = data.coinSpotWithCoin;
     Object.keys(data.journalAnswers || {}).forEach(k => { journalAnswers[k] = data.journalAnswers[k]; });
-    gameState = data.gameState === "done" ? "done" : "playing";
+    gameState = "playing";
+    gameCompleted = !!data.gameCompleted;
+    if (data.docsSeen) Object.assign(docsSeen, data.docsSeen);
     updateGateState();
     updateHud();
     return true;
@@ -1591,10 +1730,18 @@ function startQuiz(){
     quizOptions.innerHTML = "";
     quizResult.style.display = "block";
     quizResult.innerHTML = "<p style='font-size:16px;'>Du hast " + score + " von " + total + " Fragen richtig beantwortet.</p>" +
-      "<p style='font-size:13px;color:#8f8a7c;'>Öffne dein Wissensbuch jederzeit erneut, um Auslöser, Verlauf und Ergebnis noch einmal nachzulesen.</p>";
-    gameState = "done";
+      "<p style='font-size:13px;color:#8f8a7c;'>Öffne dein Notizbuch jederzeit erneut, um Auslöser, Verlauf und Ergebnis noch einmal nachzulesen.</p>";
+    document.getElementById("closeQuizBtn").style.display = "inline-block";
+    gameCompleted = true;
+    saveGame();
   });
 }
+document.getElementById("closeQuizBtn").addEventListener("click", () => {
+  quizOverlay.classList.remove("show");
+  document.getElementById("closeQuizBtn").style.display = "none";
+  gameState = "playing";
+  saveGame();
+});
 
 function startQuizGeneric(questions, onFinish){
   currentQuizSet = questions;
@@ -1703,7 +1850,7 @@ function render(){
 
   ctx.restore();
 
-  if (gameState === "playing" && !dialogueOpen && !journalOpen && !flugblattOpen && !textTaskOpen && !noticeboardChoiceOpen){
+  if (gameState === "playing" && !dialogueOpen && !journalOpen && !rucksackOpen && !flugblattOpen && !textTaskOpen && !noticeboardChoiceOpen){
     const npc = findNearbyNPC();
     const depot = npc ? null : findNearbyDepot();
     const coinSpot = (npc || depot !== null) ? null : findNearbyCoinSpot();
