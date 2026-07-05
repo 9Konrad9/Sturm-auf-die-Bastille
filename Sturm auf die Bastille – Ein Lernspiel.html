@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Sturm auf die Bastille – Ein Lernspiel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --paper:#efe6d3;
+    --ink:#2b2620;
+    --panel:#20201d;
+    --panel-2:#2c2b26;
+    --accent-red:#a8342a;
+    --accent-blue:#33507a;
+    --accent-gold:#c9a227;
+    --muted:#8f8a7c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#141311;color:var(--paper);font-family:'Inter',sans-serif;height:100%;overscroll-behavior:none;}
+  body{height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+  #app{flex:1;display:flex;flex-direction:column;min-height:0;padding:6px;gap:4px;}
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin:0;color:var(--paper);}
+  .subtitle{color:var(--muted);font-size:11px;line-height:1.3;}
+  .header-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+
+  #gameWrap{position:relative;flex:1;min-height:0;width:100%;background:#000;border-radius:6px;overflow:hidden;box-shadow:0 0 0 1px #3a382f;touch-action:none;}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;touch-action:none;}
+
+  .hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:8px;pointer-events:none;font-size:12px;}
+  .hud-facts{display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto;}
+  .fact-pill{background:rgba(20,19,17,0.75);border:1px solid #4a4738;border-radius:20px;padding:4px 10px;display:flex;gap:6px;align-items:center;}
+  .fact-pill .dot{width:8px;height:8px;border-radius:50%;}
+  .dot-ausloeser{background:var(--accent-gold);}
+  .dot-verlauf{background:var(--accent-blue);}
+  .dot-ergebnis{background:var(--accent-red);}
+
+  .btn{background:var(--panel-2);border:1px solid #4a4738;color:var(--paper);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;padding:6px 12px;border-radius:6px;cursor:pointer;pointer-events:auto;}
+  .btn:hover{border-color:var(--accent-gold);}
+  .btn:focus-visible{outline:2px solid var(--accent-gold);outline-offset:2px;}
+  .btn-journal{background:var(--panel-2);border:1px solid var(--accent-gold);color:var(--paper);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;padding:10px 16px;min-height:44px;border-radius:8px;cursor:pointer;pointer-events:auto;display:flex;align-items:center;gap:6px;}
+  .btn-journal:active{background:rgba(201,162,39,0.35);}
+
+  #dialogueBox{position:absolute;left:8px;right:8px;bottom:8px;background:rgba(20,19,17,0.94);border:1px solid #4a4738;border-radius:8px;padding:14px 16px;display:none;}
+  #dialogueBox .name{font-family:'Fraunces',serif;font-size:14px;color:var(--accent-gold);margin-bottom:6px;}
+  #dialogueBox .text{font-size:14px;line-height:1.5;color:var(--paper);min-height:42px;}
+  #dialogueBox .hint{margin-top:8px;font-size:11px;color:var(--muted);}
+
+  .overlay{position:absolute;inset:0;background:rgba(10,10,9,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+  .overlay.show{display:flex;}
+  .overlay h2{font-family:'Fraunces',serif;font-size:20px;margin:0 0 10px;}
+  .overlay p{font-size:14px;line-height:1.6;color:#d8d2c2;max-width:520px;margin:0 0 16px;}
+
+  #journalPanel{position:absolute;inset:0;background:rgba(10,10,9,0.96);display:none;flex-direction:column;padding:18px;overflow-y:auto;}
+  #journalPanel.show{display:flex;}
+  #journalPanel h2{font-family:'Fraunces',serif;font-size:18px;margin:0 0 12px;}
+  .journal-cols{display:flex;gap:12px;flex:1;}
+  .journal-col{flex:1;background:var(--panel-2);border:1px solid #4a4738;border-radius:8px;padding:10px;}
+  .journal-col h3{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.04em;}
+  .journal-col.ausloeser h3{color:var(--accent-gold);}
+  .journal-col.verlauf h3{color:var(--accent-blue);}
+  .journal-col.ergebnis h3{color:var(--accent-red);}
+  .fact-entry{font-size:12.5px;line-height:1.5;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #3a382f;}
+  .fact-entry b{display:block;color:var(--paper);margin-bottom:2px;}
+  .fact-entry.locked{color:var(--muted);font-style:italic;}
+
+  .controls-line{margin-top:10px;font-size:12px;color:var(--muted);}
+  .journal-tips{background:var(--panel-2);border:1px solid var(--accent-gold);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12.5px;line-height:1.6;color:var(--paper);}
+  .journal-tips b{color:var(--accent-gold);}
+
+  .flugblatt-paper{background:#e8dcc0;color:#2b2416;border-radius:4px;padding:22px 26px;max-width:520px;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,0.5);transform:rotate(-0.6deg);}
+  .flugblatt-paper h2{font-family:'Fraunces',serif;font-size:17px;margin:0 0 12px;color:#2b2416;}
+  .flugblatt-paper blockquote{font-family:'Fraunces',serif;font-style:italic;font-size:13.5px;line-height:1.6;margin:0 0 6px;border-left:3px solid #8a6b3f;padding-left:12px;white-space:pre-line;}
+  .flugblatt-paper .flugblatt-source{font-size:11px;color:#5a4d33;margin:0 0 14px;}
+  .flugblatt-paper p{font-size:13px;margin:0 0 4px;}
+  .flugblatt-paper ol{font-size:13px;line-height:1.6;margin:0 0 16px;padding-left:20px;}
+  .flugblatt-paper .btn{background:#2b2416;border-color:#5a4d33;}
+
+  .journal-answers{margin-top:8px;padding-top:8px;border-top:1px dashed #4a4738;font-size:12px;}
+  .journal-answers b{color:var(--accent-gold);display:block;margin-bottom:6px;}
+  .journal-answer-item{margin-bottom:8px;line-height:1.4;}
+  .journal-answer-question{color:var(--muted);font-style:italic;margin-bottom:2px;}
+  .journal-answer-text{color:var(--paper);padding-left:8px;}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);}
+
+  .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-8px);background:rgba(20,19,17,0.94);border:1px solid var(--accent-gold);color:var(--paper);padding:6px 14px;border-radius:20px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .fact-pill.inv{opacity:0.35;transition:opacity .2s ease;}
+  .fact-pill.inv.active{opacity:1;border-color:var(--accent-gold);}
+  .dot-coin{background:#c9a227;}
+  .dot-weapon{background:#8a6b4d;border-radius:2px;}
+
+  /* Touch-Steuerung */
+  #touchControls{position:absolute;inset:0;pointer-events:none;display:none;}
+  #touchControls.show{display:block;}
+  .dpad{position:absolute;left:16px;bottom:16px;width:150px;height:150px;pointer-events:auto;}
+  .dpad-btn{position:absolute;width:52px;height:52px;background:rgba(20,19,17,0.55);border:1px solid rgba(232,226,208,0.35);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--paper);font-size:20px;user-select:none;-webkit-user-select:none;touch-action:none;}
+  .dpad-btn:active, .dpad-btn.active{background:rgba(201,162,39,0.55);border-color:var(--accent-gold);}
+  .dpad-up{left:49px;top:0;}
+  .dpad-down{left:49px;top:98px;}
+  .dpad-left{left:0;top:49px;}
+  .dpad-right{left:98px;top:49px;}
+  #actionBtn{position:absolute;right:20px;bottom:26px;width:84px;height:84px;border-radius:50%;background:rgba(168,52,42,0.55);border:2px solid rgba(232,226,208,0.5);color:var(--paper);font-size:12px;font-weight:600;pointer-events:auto;user-select:none;-webkit-user-select:none;touch-action:none;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;}
+  #actionBtn:active, #actionBtn.active{background:rgba(201,162,39,0.7);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header-row">
+    <h1>Sturm auf die Bastille</h1>
+    <div class="subtitle">Pfeiltasten/WASD oder die Steuerung unten links. Leertaste oder der runde Knopf zum Interagieren. "I" oder das Buch-Symbol fürs Wissensbuch.</div>
+  </div>
+
+  <div id="gameWrap">
+    <canvas id="game" width="800" height="480"></canvas>
+
+    <div class="hud">
+      <div class="hud-facts">
+        <div class="fact-pill"><span class="dot dot-ausloeser"></span><span id="countAusloeser">0/4</span></div>
+        <div class="fact-pill"><span class="dot dot-verlauf"></span><span id="countVerlauf">0/3</span></div>
+        <div class="fact-pill"><span class="dot dot-ergebnis"></span><span id="countErgebnis">0/1</span></div>
+        <div class="fact-pill inv" id="coinPill"><span class="dot dot-coin"></span><span>Münze</span></div>
+        <div class="fact-pill inv" id="weaponPill"><span class="dot dot-weapon"></span><span>Musketen</span></div>
+      </div>
+      <button class="btn-journal" id="openJournalBtn">📖 Wissensbuch</button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div id="touchControls">
+      <div class="dpad">
+        <div class="dpad-btn dpad-up" data-key="arrowup" aria-label="Nach oben">▲</div>
+        <div class="dpad-btn dpad-down" data-key="arrowdown" aria-label="Nach unten">▼</div>
+        <div class="dpad-btn dpad-left" data-key="arrowleft" aria-label="Nach links">◀</div>
+        <div class="dpad-btn dpad-right" data-key="arrowright" aria-label="Nach rechts">▶</div>
+      </div>
+      <div id="actionBtn" aria-label="Interagieren">SPRECHEN /<br>DURCHSUCHEN</div>
+    </div>
+
+    <div id="dialogueBox">
+      <div class="name" id="dlgName"></div>
+      <div class="text" id="dlgText"></div>
+      <div class="hint">Leertaste / Tippen zum Fortfahren</div>
+    </div>
+
+    <div class="overlay show" id="startOverlay">
+      <h2>Sturm auf die Bastille</h2>
+      <p><i>Was hier gleich passiert, hat der Revolutionär Camille Desmoulins in einem Brief an seinen Vater festgehalten.</i></p>
+      <p>Paris, Sommer 1789. Du spielst einen jungen Revolutionär auf dem Platz vor der Bastille. <b>Tipp: Sprich zuerst mit der Wache am Tor</b> – sie sagt dir, was zu tun ist. Sprich mit allen Menschen hier, sammle Wissen über die Ursachen der Unruhen und die Ereignisse dieser Tage. Halte auch Ausschau nach einer Münze und einem versteckten Waffendepot – erst mit Wissen und Musketen öffnet sich das Tor.</p>
+      <div id="saveFoundBox" style="display:none;background:rgba(201,162,39,0.12);border:1px solid var(--accent-gold);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;">
+        Es wurde ein gespeicherter Fortschritt gefunden. Ist das dein eigener Spielstand?
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <button class="btn" id="continueBtn" style="display:none;">Weiterspielen</button>
+        <button class="btn" id="startBtn">Neues Spiel starten</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="endingOverlay">
+      <h2>14. Juli 1789</h2>
+      <p id="endingText"></p>
+      <button class="btn" id="endingNextBtn">Weiter</button>
+    </div>
+
+    <div class="overlay" id="textTaskOverlay">
+      <h2 id="textTaskHeading">Frage 1 von 2</h2>
+      <p id="textTaskPrompt" style="max-width:480px;"></p>
+      <textarea id="textTaskInput" rows="4" style="width:100%;max-width:480px;background:var(--panel-2);color:var(--paper);border:1px solid #4a4738;border-radius:6px;padding:10px;font-family:inherit;font-size:14px;"></textarea>
+      <button class="btn" id="textTaskNextBtn" style="margin-top:14px;">Weiter</button>
+    </div>
+
+    <div class="overlay" id="noticeboardChoiceOverlay">
+      <h2>Anschlagbrett</h2>
+      <p>Zwei Blätter hängen hier – welches liest du?</p>
+      <div id="noticeboardChoices" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:400px;"></div>
+    </div>
+
+    <div class="overlay" id="flugblattOverlay">
+      <div class="flugblatt-paper">
+        <h2 id="flugblattTitle"></h2>
+        <blockquote id="flugblattQuote"></blockquote>
+        <p class="flugblatt-source" id="flugblattSource"></p>
+        <p><b>Arbeitsaufträge:</b></p>
+        <ol id="flugblattTasks"></ol>
+        <button class="btn" id="closeFlugblattBtn">Schließen</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="quizOverlay">
+      <h2 id="quizHeading">Frage 1 von 5</h2>
+      <p id="quizQuestion"></p>
+      <div id="quizOptions" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:480px;"></div>
+      <div id="quizResult" style="display:none;margin-top:14px;"></div>
+    </div>
+
+    <div id="journalPanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>Dein Wissensbuch</h2>
+        <button class="btn-journal" id="closeJournalBtn">✕ Schließen</button>
+      </div>
+      <div id="journalTips" class="journal-tips"></div>
+      <div class="journal-cols">
+        <div class="journal-col ausloeser">
+          <h3>Auslöser</h3>
+          <div id="journalAusloeser"></div>
+        </div>
+        <div class="journal-col verlauf">
+          <h3>Verlauf</h3>
+          <div id="journalVerlauf"></div>
+        </div>
+        <div class="journal-col ergebnis">
+          <h3>Ergebnis</h3>
+          <div id="journalErgebnis"></div>
+        </div>
+      </div>
+      <div class="controls-line">Schließen mit "I", dem Knopf oben oder Escape</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   TEIL 1: KONFIGURATION
+   Alle Koordinaten beziehen sich auf das ORIGINALBILD
+   (paris_level1.png, 2816x1536 Pixel) und werden unten mit
+   dem Faktor S auf die tatsächliche Spielwelt herunterskaliert.
+   Das hält die Zahlen vergleichbar mit den Markierungen, die
+   wir gemeinsam auf dem Bild besprochen haben.
+   ========================================================= */
+
+const S = 0.5;
+const ORIG_W = 2816, ORIG_H = 1536;
+const WORLD_W = ORIG_W * S;
+const WORLD_H = ORIG_H * S;
+let VIEW_W = 800;
+let VIEW_H = 480;
+
+// Zoom-Faktor: höher = alles größer dargestellt, Kamera zeigt dafür
+// einen kleineren Weltausschnitt. Einfach anpassen, falls gewünscht.
+const ZOOM = 2;
+
+const REQUIRED_FACTS = { ausloeser: 4, verlauf: 2 };
+const WEAPON_REQUIRED = true;
+
+// Münze beim Brunnen
+// Münze liegt versteckt in einem von mehreren Fässern/Kisten – bei jedem
+// Spielstart wird zufällig neu bestimmt, in welchem. Die anderen sind leer.
+const COIN_SPOT_POSITIONS_ORIG = [
+  { x: 1795, y: 678 },  // leicht neben deinem Klick (Original lag auf dem Fass selbst)
+  { x: 1911, y: 1127 },
+  { x: 895,  y: 1102 }, // leicht verschoben (Original lag zwischen zwei Wänden)
+  { x: 2704, y: 836 },  // leicht verschoben (Original lag in der Mauer)
+  { x: 2595, y: 297 },
+  { x: 263,  y: 678 },  // leicht verschoben (Original lag auf dem Fass selbst)
+];
+
+// Zwei durchsuchbare Verstecke. Nur eines enthält wirklich die Musketen –
+// fest an dieser Stelle, kein Zufall mehr.
+const DEPOT_DECOY_ORIG = { x: 250, y: 600 };
+const DEPOT_REAL_ORIG  = { x: 1980, y: 1430 };
+
+const NPCS = [
+  {
+    id: "baeckerin",
+    name: "Marie, die Bäckerin",
+    ox: 700, oy: 845, palette: "baeckerin",
+    category: "ausloeser",
+    factTitle: "Hungersnot und Brotpreise",
+    factText: "Durch Missernten sind die Brotpreise 1788/89 stark gestiegen. Für viele Familien in Paris wurde Brot – das Grundnahrungsmittel – kaum noch bezahlbar.",
+    dialogue: [
+      "Seit Monaten steigen die Brotpreise immer weiter.",
+      "Meine Kinder haben Hunger, und der Adel feiert weiter seine Feste.",
+      "Die Menschen hier reden nur noch über eines: dass sich etwas ändern muss."
+    ]
+  },
+  {
+    id: "bauer",
+    name: "Jean, der Bauer",
+    ox: 260, oy: 1220, palette: "bauer",
+    category: "ausloeser",
+    factTitle: "Die Ständegesellschaft",
+    factText: "Frankreich war in drei Stände geteilt: Klerus, Adel und der Dritte Stand (Bauern, Bürger, Arbeiter). Der Dritte Stand zahlte fast alle Steuern, hatte aber kaum politisches Mitspracherecht.",
+    dialogue: [
+      "Wir vom Dritten Stand zahlen die Steuern für Adel und Klerus mit.",
+      "Bei den Generalständen wollten wir endlich mitbestimmen – doch man stimmt weiter nach Ständen ab, nicht nach Köpfen.",
+      "Deshalb haben sich viele im Ballhaus zur Nationalversammlung erklärt."
+    ]
+  },
+  {
+    id: "buergerin",
+    name: "Sophie, eine Bürgerin",
+    ox: 1360, oy: 1060, palette: "buergerin",
+    category: "ausloeser",
+    factTitle: "Ideen der Aufklärung: Gewaltenteilung",
+    factText: "Denker der Aufklärung wie Rousseau, Voltaire und Montesquieu forderten Freiheit, Gleichheit und Mitbestimmung. Montesquieu forderte insbesondere eine Gewaltenteilung zwischen gesetzgebender, ausführender und richterlicher Gewalt, um Machtmissbrauch zu verhindern. Diese Ideen verbreiteten sich in Pariser Salons und stellten die absolute Macht des Königs infrage.",
+    dialogue: [
+      "Wir hatten doch neulich im Unterricht über die Aufklärung gesprochen, oder? Vernunft statt Aberglauben, Freiheit und Gleichheit für alle Menschen.",
+      "In meinem Salon habe ich letzte Woche mit Freunden über einen Denker namens Montesquieu diskutiert.",
+      "Er fordert, die Macht des Staates aufzuteilen: in eine gesetzgebende, eine ausführende und eine richterliche Gewalt – damit niemand allein über alles bestimmen kann.",
+      "Genau das fehlt uns doch bei einem König, der ganz allein entscheidet, findest du nicht?"
+    ]
+  },
+  {
+    id: "adliger",
+    name: "Graf de Valmont",
+    ox: 1100, oy: 760, palette: "adliger",
+    category: "ausloeser",
+    factTitle: "Die Perspektive des Adels",
+    factText: "Nicht alle im Adel sahen die Lage gleich. Manche hielten am alten System fest, andere – wie einige liberale Adlige – sympathisierten mit den Reformforderungen des Dritten Standes. Bei den Generalständen bestand der Adel auf einer Abstimmung nach Ständen, während der Dritte Stand eine Abstimmung nach Köpfen forderte.",
+    dialogue: [
+      "Diese Unruhen werden vorübergehen, das war schon immer so.",
+      "Doch ich gebe zu: Selbst unter uns Adligen mehren sich die Stimmen, die Reformen fordern.",
+      "Bei den Generalständen ging der Streit ja schon los: Wir bestanden auf einer Abstimmung nach Ständen – jeder Stand eine Stimme, dann überstimmen Adel und Klerus den Dritten Stand immer.",
+      "Der Dritte Stand wollte stattdessen eine Abstimmung nach Köpfen. Nun ja, der König zögert – und genau das macht die Lage so gefährlich."
+    ]
+  },
+  {
+    id: "bote",
+    name: "Ein Bote",
+    ox: 1820, oy: 800, palette: "bote",
+    category: "verlauf",
+    factTitle: "Der Ballhausschwur",
+    factText: "Am 20. Juni 1789 schworen die Abgeordneten des Dritten Standes im Ballhaus von Versailles, nicht auseinanderzugehen, bevor Frankreich eine Verfassung hat.",
+    dialogue: [
+      "Neuigkeiten aus Versailles: Die Abgeordneten haben sich zur Nationalversammlung erklärt!",
+      "Sie schworen im Ballhaus, nicht aufzugeben, bis es eine Verfassung gibt.",
+      "Der König hat Truppen um Paris zusammengezogen – die Stimmung ist angespannt."
+    ]
+  },
+  {
+    id: "menge",
+    name: "Ein aufgebrachter Pariser",
+    ox: 2430, oy: 1220, palette: "menge",
+    category: "verlauf",
+    factTitle: "Unruhen und Waffensuche",
+    factText: "Am 14. Juli 1789 stürmten Pariser zunächst die Invalidenkaserne, um Waffen zu erbeuten. Ihnen fehlte jedoch noch Schießpulver – das lagerte in der Bastille.",
+    dialogue: [
+      "Wir haben Gewehre aus der Invalidenkaserne geholt – aber ohne Pulver nützen sie nichts!",
+      "Man sagt, in der Bastille lagert Pulver. Und Gefangene, die der König dort ohne Prozess festhält.",
+      "Die Bastille ist außerdem ein Symbol der königlichen Willkürherrschaft. Dorthin müssen wir!"
+    ]
+  }
+];
+
+const GATE_GUARD = { id: "torwache", name: "Wache am Bastille-Tor", ox: 1400, oy: 680, palette: "wache" };
+const COMMANDANT = { id: "launay", name: "Kommandant de Launay", ox: 1400, oy: 550, palette: "launay" };
+
+const ENDING_SLIDES = [
+  "Nach Stunden der Spannung öffnet sich das Tor. Die Menge strömt in den Hof der Bastille.",
+  "Kommandant de Launay ergibt sich. Die Festung fällt in die Hände der Aufständischen.",
+  "Der Sturm auf die Bastille am 14. Juli 1789 wird zum Symbol des Widerstands gegen die absolute Herrschaft des Königs.",
+  "Er markiert den Beginn der Französischen Revolution. Wenige Wochen später verabschiedet die Nationalversammlung die 'Erklärung der Menschen- und Bürgerrechte'.",
+  "Das Ancien Régime – die alte, ständische Ordnung Frankreichs – beginnt zu zerbrechen."
+];
+
+// Anschlagbrett: Ort der Flugblätter für die Zusatzaufgaben von Bote und Bauer.
+const NOTICEBOARD_SPOT_ORIG = { x: 2100, y: 830 };
+
+const FLUGBLATT = {
+  title: "Flugblatt: Was ist der Dritte Stand?",
+  quote: "Der Plan dieser Schrift ist ganz einfach. Wir haben uns drei Fragen vorzulegen:\n1. Was ist der Dritte Stand? ALLES.\n2. Was ist er bis jetzt in der politischen Ordnung gewesen? NICHTS.\n3. Was verlangt er? ETWAS ZU SEIN.\nDer Dritte Stand ist der starke und kraftvolle Mann, der an einem Arm noch angekettet ist. Wenn man den Adel wegnähme, wäre die Nation nicht etwas weniger, sondern etwas mehr. Also, was ist der Dritte Stand? Alles, aber ein gefesseltes und unterdrücktes Alles. Was wäre er ohne den privilegierten Stand? Alles, aber ein freies und blühendes Alles. Nichts kann ohne ihn gehen; alles ginge unendlich besser ohne die anderen. [...] Was ist eine Nation? Eine Gruppe von Menschen, die unter einem gemeinsamen Gesetz leben und durch dieselbe gesetzgebende Versammlung repräsentiert werden. [...] Falls nun der Adel das Volk um den Preis der Freiheit in der Unterdrückung hält, dann wird es sich die Frage erlauben: auf Grundlage von welchem Recht?",
+  source: "(Zit. nach: Geschichte in Quellen, a. a. O., S. 163 ff.)",
+  tasks: [
+    "Was fordert Sieyès mit diesem Text?",
+    "Sieyès vergleicht den Dritten Stand mit einem „starken und kraftvollen Mann, der an einem Arm noch angekettet ist“. Was will er mit diesem Bild ausdrücken?",
+    "Wie hängt Sieyès' Forderung mit dem zusammen, was dir Jean, der Bauer, über die Ständegesellschaft erzählt hat?"
+  ]
+};
+
+const BOTE_QUESTIONS = [
+  { id: "bedeutung", prompt: "Was bedeutet es, dass der Dritte Stand laut Sieyès bisher \"nichts\" war?" },
+  { id: "forderung", prompt: "Was fordert der Text für die Zukunft?" }
+];
+
+const FLUGBLATT_2 = {
+  title: "Flugblatt: Beschwerdeschrift aus Colmare",
+  quote: "Anlässlich der Einberufung der Generalstände bittet Ludwig XVI. sein Volk, ihm seine Nöte zu schildern. Das arme Dorf Colmare schreibt:\n\nDa die königliche Güte es uns gestattet, unsere Klagen und Beschwerden bis zu den Füßen Seiner Majestät zu tragen, haben wir die Ehre, ihm mitzuteilen:\n1. Wenn der Klerus und der Adel so wie wir Steuern zahlten, dann würde das den Staat erheblich stärken, wodurch er imstande wäre, dem unterdrückten Volk Erleichterung zu verschaffen.\n2. Wir erbitten die Abschaffung der indirekten Steuern und der Salzsteuer. [...]\n6. Es sollte das Wild wie Hasen, Kaninchen und andere wilde Tiere, die den Bauern großen Schaden verursachen, getötet werden. [...]\n10. Wir bitten um die Abschaffung überflüssiger Mönche und Nonnen. [...]\n15. Die Herren Pfarrer sollen die Kosten für ihr Pfarrhaus selber tragen und deshalb jährlich eine Summe in den Kirchenschatz einzahlen.",
+  source: "(Zit. nach: Wolfgang Lautemann/Manfred Schlenke (Hg.), Geschichte in Quellen, Amerikanische und Französische Revolution, München (bsv) 1976, S. 150)",
+  tasks: [
+    "Was sind zentrale Forderungen des Dritten Standes in dieser Beschwerdeschrift? Nenne mindestens zwei konkrete Beispiele (z. B. zur Steuerlast von Klerus und Adel)."
+  ]
+};
+
+const BAUER_QUESTIONS = [
+  { id: "steuern", prompt: "Was fordert das Dorf Colmare bezüglich der Steuern von Klerus und Adel?" },
+  { id: "weitere", prompt: "Nenne eine weitere Forderung des Dorfes aus der Beschwerdeschrift." }
+];
+
+// Nachwort nach dem (gewaltfreien) Spiel-Ending: der echte Augenzeugenbericht.
+const FLUGBLATT_DESMOULINS = {
+  title: "Augenzeugenbericht: Camille Desmoulins an seinen Vater",
+  quote: "Der König lässt nach dem Ballhausschwur Soldaten vor Paris ziehen. Die Bürger sind empört. Der Revolutionär Camille Desmoulins war mit dabei und schreibt in einem Brief an seinen Vater:\n\nKaum haben wir Waffen, so geht es zur Bastille (Pariser Stadtgefängnis). Wir knallen ein oder zwei Stunden drauflos, wir schießen herunter, was sich auf den Türmen sehen lässt; der Gouverneur ergibt sich; er lässt die Zugbrücke herunter, man stürzt drauflos, aber er zieht sie sofort wieder hoch und schießt mit Kanonen drein. Jetzt schlägt das Geschütz der Französischen Garden (revolutionäre Bürgerwehr) eine Bresche. Ein Kupferstecher steigt als Erster hinauf, man wirft ihn hinunter und bricht ihm die Beine entzwei. Der Nächste hat mehr Glück. Um halb drei Uhr war die Bastille schon genommen, von Bürgersleuten und führerlosen Soldaten, ohne einen einzigen Offizier! Man führt den Gouverneur zum Stadthaus und schlägt ihn unterwegs halbtot. Er ist so geschlagen worden, dass es mit ihm zu Ende gehen will; man gibt ihm auf dem Grèveplatz den Rest und ein Schlächter schneidet ihm den Kopf ab. Den trägt man auf der Spitze einer Pike [Lanze].\n\nDie Unterdrücker wollten alle aus Paris flüchten; aber von Montagabend an war immer eine Patrouille von 50 000 Mann auf den Beinen. Man hat niemanden aus der Hauptstadt hinausgelassen. [...] Die Schweizer, Wachen des königlichen Schatzes, haben die Waffen niedergelegt. Man hat dort 24 Millionen gefunden, deren sich die Stadt Paris bemächtigt hat. Nach dem Handstreich, mit dem die Bastille gestürmt worden war, glaubte man, die rings um Paris lagernden Truppen könnten eindringen, und niemand legte sich schlafen. In dieser Nacht waren alle Straßen beleuchtet; man warf Stühle, Tische, Fässer, Pflastersteine, Wagen auf die Straßen, um sie zu verbarrikadieren und den Pferden die Beine zu brechen. In dieser Nacht waren 70 000 Mann unter den Waffen. [...]\n\nGestern Morgen ging der eingeschüchterte König in die Nationalversammlung; er ergab sich der Versammlung bedingungslos und nun sind alle seine Sünden vergeben. Unsere Abgeordneten führten ihn im Triumph zum Schloss zurück. Er weinte viel, hat man versichert. [...]\n\n150 Abgeordnete der Nationalversammlung, Klerus, Adel und Gemeine, setzten sich in königliche Kutschen, um den Frieden zu verkünden. Um halb 4 Uhr langten sie auf dem Platz Ludwigs XV. an. 100 000 Bewaffnete und 80 000 Menschen mit rot-blauen Kokarden [kreisförmiges Abzeichen mit den Farben der Stadt Paris] waren um sie. Das Rot, um zu zeigen, dass man bereit war, sein Blut zu vergießen, und das Blau für eine himmlische Verfassung. Die Abgeordneten trugen ebenfalls die Kokarde.",
+  source: "(Zit. nach: Gerhard Schneider, a. a. O., S. 49 f.)",
+  tasks: [
+    "Vergleiche, wie das Spiel den Sturm auf die Bastille dargestellt hat, mit dem, was Camille Desmoulins wirklich berichtet. Was wurde im Spiel weggelassen oder verändert – und warum, glaubst du, haben wir das so gemacht?",
+    "Was symbolisieren laut dem Text die Farben Rot und Blau der Kokarde?",
+    "Was geschah mit dem König, nachdem die Bastille gestürmt worden war?"
+  ]
+};
+
+const DESMOULINS_QUESTIONS = [
+  { id: "vergleich", prompt: "Vergleiche die Spiel-Version des Sturms mit dem Bericht von Desmoulins. Was wurde weggelassen oder verändert – und warum, glaubst du, haben wir das so gemacht?" },
+  { id: "kokarde", prompt: "Was symbolisieren laut dem Text die Farben Rot und Blau der Kokarde?" },
+  { id: "koenig", prompt: "Was geschah mit dem König, nachdem die Bastille gestürmt worden war?" }
+];
+
+const BUERGERIN_QUESTIONS = [
+  { id: "gewaltenteilung", prompt: "Stelle das Prinzip der Gewaltenteilung nach Montesquieu in eigenen Worten dar." },
+  { id: "bedeutung", prompt: "Erkläre, warum diese Idee eine Gefahr für die absolute Monarchie des Königs war." }
+];
+
+const ADLIGER_QUESTIONS = [
+  { id: "abstimmung", prompt: "Erkläre, warum der Dritte Stand auf eine Abstimmung nach Köpfen bestand." }
+];
+
+const QUIZ = [
+  {
+    q: "Was war einer der wichtigsten Auslöser für die Unruhen 1789?",
+    options: ["Hohe Brotpreise durch Missernten", "Ein verlorener Krieg gegen England", "Eine Naturkatastrophe in Paris"],
+    correct: 0
+  },
+  {
+    q: "Was beschreibt die Ständegesellschaft am besten?",
+    options: [
+      "Alle Franzosen zahlten gleich viele Steuern",
+      "Der Dritte Stand trug die Steuerlast, hatte aber kaum Mitsprache",
+      "Nur der König durfte Steuern zahlen"
+    ],
+    correct: 1
+  },
+  {
+    q: "Was geschah beim Ballhausschwur am 20. Juni 1789?",
+    options: [
+      "Der König löste die Nationalversammlung auf",
+      "Die Bastille wurde gestürmt",
+      "Die Abgeordneten schworen, bis zu einer Verfassung zusammenzubleiben"
+    ],
+    correct: 2
+  },
+  {
+    q: "Warum war die Bastille am 14. Juli 1789 ein Ziel?",
+    options: [
+      "Dort lagerten Pulver und Waffen, und sie galt als Symbol der Willkürherrschaft",
+      "Dort wohnte der König",
+      "Dort tagte die Nationalversammlung"
+    ],
+    correct: 0
+  },
+  {
+    q: "Welches Ergebnis wird dem Sturm auf die Bastille zugeschrieben?",
+    options: [
+      "Er beendete die Französische Revolution",
+      "Er gilt als Symbol und Beginn der Französischen Revolution",
+      "Er führte sofort zur Abschaffung der Monarchie"
+    ],
+    correct: 1
+  }
+];
+
+// Grobe Hindernisflächen, von dir mit dem Kollisions-Editor gezeichnet.
+const OBSTACLE_DEFS_ORIG = [
+  {x:450, y:0, w:830, h:620},
+  {x:1500, y:0, w:860, h:620},
+  {x:1950, y:560, w:250, h:170},
+  {x:493, y:657, w:119, h:58},
+  {x:614, y:578, w:404, h:227},
+  {x:427, y:2, w:182, h:785},
+  {x:1, y:406, w:180, h:304},
+  {x:7, y:604, w:174, h:116},
+  {x:157, y:549, w:71, h:172},
+  {x:-1, y:0, w:190, h:586},
+  {x:1951, y:1009, w:441, h:365},
+  {x:1644, y:1225, w:306, h:309},
+  {x:1552, y:1304, w:90, h:225},
+  {x:-1, y:1003, w:188, h:531},
+  {x:355, y:1302, w:909, h:230},
+  {x:355, y:1019, w:203, h:510},
+  {x:548, y:1175, w:502, h:122},
+  {x:1370, y:908, w:145, h:100},
+  {x:556, y:1104, w:370, h:63},
+  {x:411, y:998, w:454, h:100},
+  {x:424, y:956, w:367, h:37},
+  {x:-1, y:903, w:185, h:92},
+  {x:1954, y:578, w:246, h:188},
+  {x:1882, y:546, w:77, h:174},
+  {x:1563, y:636, w:206, h:87},
+  {x:1000, y:641, w:259, h:82},
+  {x:2630, y:961, w:185, h:563},
+  {x:2197, y:1423, w:195, h:108},
+  {x:2630, y:2, w:180, h:782},
+  {x:2194, y:2, w:195, h:721},
+  {x:1042, y:1220, w:180, h:74},
+  {x:2001, y:966, w:338, h:40},
+  {x:2669, y:916, w:98, h:40},
+];
+const GATE_BARRIER_ORIG = {x:1280, y:0, w:220, h:620};
+
+// Bildausschnitt des Dachüberhangs an der Gasse zum Waffendepot. Wird nach
+// der Spielfigur gezeichnet, damit man optisch "dahinter" verschwindet,
+// statt scheinbar über das Dach zu laufen.
+const FOREGROUND_OVERLAYS_ORIG = [
+  { src: "assets/dach_ueberlagerung.png", x: 2199, y: 1290, w: 193, h: 133 }
+];
+
+const PLAYER_START_ORIG = { x: 1400, y: 1150 };
+
+/* =========================================================
+   TEIL 2: PIXEL-SPRITES (Platzhalter, bis echte Bilder da sind)
+   ========================================================= */
+
+const PERSON_TEMPLATE = [
+  "....HHHHHHHH....",
+  "...HHHHHHHHHH...",
+  "..HHHHHHHHHHHH..",
+  "..HHFFFFFFFFHH..",
+  "..FFFFFFFFFFFF..",
+  "..FFFFFFFFFFFF..",
+  "...FFFFFFFFFF...",
+  "AASSSSSSSSSSSSAA",
+  "AASSSSSSSSSSSSAA",
+  "AASSSSSSSSSSSSAA",
+  "AASSSSSSSSSSSSAA",
+  "AASSSSSSSSSSSSAA",
+  "GASSSSSSSSSSSSAG",
+  "..XXXXXXXXXXXX..",
+  "..PPPPPPPPPPPP..",
+  "..PPPPPPPPPPPP..",
+  "..PPPPPPPPPPPP..",
+  "..PPPPPPPPPPPP..",
+  "...BBBB..BBBB...",
+  "...BBBB..BBBB..."
+];
+
+const PALETTES = {
+  player:    { H:"#a8342a", F:"#e8b98a", S:"#e8e2d0", A:"#e8e2d0", G:"#e8b98a", X:"#2c2c2a", P:"#33507a", B:"#3b2a1a" },
+  baeckerin: { H:"#f5f0e6", F:"#e8b98a", S:"#cdbfa0", A:"#cdbfa0", G:"#e8b98a", X:"#8a6b4d", P:"#8a6b4d", B:"#4a3728" },
+  bauer:     { H:"#d4a13d", F:"#c9925f", S:"#7a6a4f", A:"#7a6a4f", G:"#c9925f", X:"#4a3f2c", P:"#4a3f2c", B:"#2e2418" },
+  buergerin: { H:"#5c4a3a", F:"#e8b98a", S:"#a8637a", A:"#a8637a", G:"#e8b98a", X:"#5c3d47", P:"#5c3d47", B:"#3b2a1a" },
+  adliger:   { H:"#e8e2d0", F:"#f0d9bd", S:"#33507a", A:"#33507a", G:"#f0d9bd", X:"#c9a227", P:"#2c3e50", B:"#1a1a1a" },
+  bote:      { H:"#3a2e22", F:"#e0ab7d", S:"#5c6b47", A:"#5c6b47", G:"#e0ab7d", X:"#2c2c2a", P:"#4a3f2c", B:"#2e2418" },
+  menge:     { H:"#2c2c2a", F:"#e0ab7d", S:"#6b4a3a", A:"#6b4a3a", G:"#e0ab7d", X:"#2c2c2a", P:"#39322a", B:"#2e2418" },
+  wache:     { H:"#1a1a1a", F:"#e0ab7d", S:"#1f3a5f", A:"#1f3a5f", G:"#e0ab7d", X:"#e8e2d0", P:"#1f3a5f", B:"#141414" },
+  launay:    { H:"#c9c4b8", F:"#e0ab7d", S:"#7a1f1f", A:"#7a1f1f", G:"#e0ab7d", X:"#c9a227", P:"#2c2c2a", B:"#141414" }
+};
+
+const spriteCache = {};
+function getSpriteCanvas(paletteKey, scale){
+  const cacheKey = paletteKey + "_" + scale;
+  if (spriteCache[cacheKey]) return spriteCache[cacheKey];
+  const palette = PALETTES[paletteKey] || PALETTES.player;
+  const w = PERSON_TEMPLATE[0].length, h = PERSON_TEMPLATE.length;
+  const off = document.createElement("canvas");
+  off.width = w * scale; off.height = h * scale;
+  const octx = off.getContext("2d");
+  for (let row = 0; row < h; row++){
+    for (let col = 0; col < w; col++){
+      const ch = PERSON_TEMPLATE[row][col];
+      if (ch === ".") continue;
+      const color = palette[ch];
+      if (!color) continue;
+      octx.fillStyle = color;
+      octx.fillRect(col*scale, row*scale, scale, scale);
+    }
+  }
+  spriteCache[cacheKey] = off;
+  return off;
+}
+
+// Eigene Bild-Assets: Dateien in "assets/" neben dieser HTML-Datei ablegen
+// und hier den Namen eintragen (das // davor entfernen).
+const ASSET_OVERRIDES = {
+  // player: wird über PLAYER_WALK_ASSETS unten geladen (Laufanimation)
+  baeckerin: "assets/baeckerin.png",
+  bauer: "assets/bauer.png",
+  buergerin: "assets/buergerin.png",
+  adliger: "assets/adliger.png",
+  bote: "assets/bote.png",
+  menge: "assets/menge.png",
+  wache: "assets/wache.png",
+  launay: "assets/launay.png",
+};
+const loadedAssets = {};
+Object.keys(ASSET_OVERRIDES).forEach(key => {
+  const img = new Image();
+  img.onload = () => { loadedAssets[key] = img; };
+  img.onerror = () => { console.warn("Asset nicht gefunden, benutze Platzhalter:", ASSET_OVERRIDES[key]); };
+  img.src = ASSET_OVERRIDES[key];
+});
+
+// Hintergrundbild des Platzes. Datei "paris_level1.png" liegt im assets-Ordner.
+const BACKGROUND_SRC = "assets/paris_level1.png";
+const backgroundImg = new Image();
+let backgroundLoaded = false;
+backgroundImg.onload = () => { backgroundLoaded = true; };
+backgroundImg.onerror = () => { console.warn("Hintergrundbild nicht gefunden:", BACKGROUND_SRC); };
+backgroundImg.src = BACKGROUND_SRC;
+
+// Figuren werden über ihren FUSSPUNKT positioniert (x,y = Punkt, an dem
+// die Figur auf dem Boden steht), nicht über die linke obere Bildecke.
+// Dadurch stehen sie sauber auf dem Untergrund statt zu "schweben".
+const SPRITE_W = 36, SPRITE_H = 58;
+// Die Spielfigur wird größer dargestellt als NPCs: Ihr Spritesheet-Zuschnitt
+// enthält mehr Rand (wegen der ausladenderen Schrittstellungen), wirkt sonst
+// kleiner als die NPCs, obwohl die Box technisch gleich groß ist.
+const PLAYER_SPRITE_W = 44, PLAYER_SPRITE_H = 60;
+
+// Laufanimation der Spielfigur: 3 Blickrichtungen (vorne/seite/hinten),
+// je 5 Bewegungsphasen. "Seite" wird für Linksbewegung im Code gespiegelt,
+// wir brauchen also keine eigenen Links-Bilder.
+// Nur 4 statt 5 Frames: Spalte 5 des Spritesheets zeigt in allen Reihen
+// einen inkonsistenten Übergangs-Winkel statt der reinen Blickrichtung
+// und wird deshalb für die Animation nicht verwendet.
+// Vorne/Hinten: nur Frame 1-2 sind wirklich gerade (3-4 schauen leicht
+// diagonal, offenbar für Diagonalbewegung gedacht, die wir nicht nutzen).
+// Seite: alle 4 Frames sind sauber.
+const PLAYER_FRAME_COUNTS = { front: 2, side: 4, back: 2 };
+const PLAYER_DIRECTIONS = ["front", "side", "back"];
+const playerFrames = {};
+PLAYER_DIRECTIONS.forEach(dir => {
+  playerFrames[dir] = [];
+  for (let i = 1; i <= PLAYER_FRAME_COUNTS[dir]; i++){
+    const src = "assets/player_" + dir + "_" + i + ".png";
+    const img = new Image();
+    const state = { img, loaded: false };
+    img.onload = () => { state.loaded = true; };
+    img.onerror = () => { console.warn("Lauf-Frame nicht gefunden:", src); };
+    img.src = src;
+    playerFrames[dir].push(state);
+  }
+});
+
+const PLAYER_ANIM_TICKS = 8; // alle 8 Frames (~130ms bei 60fps) wechseln
+let playerAnimCounter = 0;
+let playerFrameIndex = 0;
+let playerDirection = "front"; // front | side | back
+
+function updatePlayerAnimation(isMoving){
+  if (!isMoving){
+    playerFrameIndex = 0;
+    playerAnimCounter = 0;
+    return;
+  }
+  playerAnimCounter++;
+  if (playerAnimCounter >= PLAYER_ANIM_TICKS){
+    playerAnimCounter = 0;
+    playerFrameIndex = (playerFrameIndex + 1) % PLAYER_FRAME_COUNTS[playerDirection];
+  }
+}
+
+function drawPlayerFrame(ctx, direction, frameIdx, feetX, feetY, facingLeft){
+  const count = PLAYER_FRAME_COUNTS[direction] || 1;
+  const safeIdx = frameIdx % count;
+  const frame = playerFrames[direction] && playerFrames[direction][safeIdx];
+  const asset = (frame && frame.loaded) ? frame.img : null;
+  ctx.save();
+  const mirror = facingLeft && direction === "side";
+  if (asset){
+    const dx = feetX - PLAYER_SPRITE_W/2, dy = feetY - PLAYER_SPRITE_H;
+    if (mirror){ ctx.translate(dx+PLAYER_SPRITE_W, dy); ctx.scale(-1,1); ctx.drawImage(asset, 0, 0, PLAYER_SPRITE_W, PLAYER_SPRITE_H); }
+    else { ctx.drawImage(asset, dx, dy, PLAYER_SPRITE_W, PLAYER_SPRITE_H); }
+  } else {
+    const scale = Math.round(PLAYER_SPRITE_H / PERSON_TEMPLATE.length);
+    const sprite = getSpriteCanvas("player", scale);
+    const sw = sprite.width, sh = sprite.height;
+    const dx = feetX - sw/2, dy = feetY - sh;
+    if (mirror){ ctx.translate(dx+sw, dy); ctx.scale(-1,1); ctx.drawImage(sprite, 0, 0); }
+    else { ctx.drawImage(sprite, dx, dy); }
+  }
+  ctx.restore();
+}
+const FOOT_W = 20, FOOT_H = 12;
+
+function drawCharacter(ctx, paletteKey, feetX, feetY, facingLeft){
+  const asset = loadedAssets[paletteKey];
+  ctx.save();
+  if (asset){
+    const dx = feetX - SPRITE_W/2, dy = feetY - SPRITE_H;
+    if (facingLeft){ ctx.translate(dx+SPRITE_W, dy); ctx.scale(-1,1); ctx.drawImage(asset, 0, 0, SPRITE_W, SPRITE_H); }
+    else { ctx.drawImage(asset, dx, dy, SPRITE_W, SPRITE_H); }
+  } else {
+    const scale = Math.round(SPRITE_H / PERSON_TEMPLATE.length);
+    const sprite = getSpriteCanvas(paletteKey, scale);
+    const sw = sprite.width, sh = sprite.height;
+    const dx = feetX - sw/2, dy = feetY - sh;
+    if (facingLeft){ ctx.translate(dx+sw, dy); ctx.scale(-1,1); ctx.drawImage(sprite, 0, 0); }
+    else { ctx.drawImage(sprite, dx, dy); }
+  }
+  ctx.restore();
+}
+
+/* =========================================================
+   TEIL 3: WELT – Hindernisse aus den Originalkoordinaten
+   ========================================================= */
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+
+function scaleRect(r){ return { x:r.x*S, y:r.y*S, w:r.w*S, h:r.h*S }; }
+function scalePoint(p){ return { x:p.x*S, y:p.y*S }; }
+
+const OBSTACLES = OBSTACLE_DEFS_ORIG.map(scaleRect);
+const GATE_BARRIER = scaleRect(GATE_BARRIER_ORIG);
+let gateOpen = false;
+
+const COIN_SPOTS = COIN_SPOT_POSITIONS_ORIG.map(scalePoint);
+let coinSpotWithCoin = Math.floor(Math.random() * COIN_SPOTS.length);
+let coinFound = false;
+
+const DEPOT_DECOY = scalePoint(DEPOT_DECOY_ORIG);
+const NOTICEBOARD_SPOT = scalePoint(NOTICEBOARD_SPOT_ORIG);
+const DEPOT_REAL = scalePoint(DEPOT_REAL_ORIG);
+
+const FOREGROUND_OVERLAYS = FOREGROUND_OVERLAYS_ORIG.map(o => {
+  const rect = scaleRect(o);
+  const img = new Image();
+  const state = { img, rect, loaded: false };
+  img.onload = () => { state.loaded = true; };
+  img.onerror = () => { console.warn("Overlay-Bild nicht gefunden:", o.src); };
+  img.src = o.src;
+  return state;
+});
+
+function drawWorldBackground(){
+  if (backgroundLoaded){
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(backgroundImg, 0, 0, WORLD_W, WORLD_H);
+    ctx.imageSmoothingEnabled = false;
+  } else {
+    ctx.fillStyle = "#3a382f";
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.fillStyle = "rgba(239,230,211,0.6)";
+    ctx.font = "14px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Hintergrundbild fehlt: assets/paris_level1.png", WORLD_W/2, WORLD_H/2);
+  }
+
+}
+
+/* =========================================================
+   TEIL 4: SPIELER, KAMERA, STEUERUNG
+   ========================================================= */
+
+const playerStart = scalePoint(PLAYER_START_ORIG);
+const player = { x: playerStart.x, y: playerStart.y, speed: 3, facingLeft: false, paletteKey: "player" };
+
+// Leinwand füllt den verfügbaren Platz (wichtig für iPad/Vollbild).
+function resizeCanvas(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  VIEW_W = Math.max(320, Math.round(rect.width));
+  VIEW_H = Math.max(240, Math.round(rect.height));
+  canvas.width = VIEW_W;
+  canvas.height = VIEW_H;
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", () => setTimeout(resizeCanvas, 200));
+resizeCanvas();
+
+// Zusätzliche Sicherheitsnetze fürs Speichern: regelmäßig, und wenn die
+// Seite in den Hintergrund geht (z. B. App-Wechsel auf dem iPad).
+setInterval(() => { if (gameState === "playing") saveGame(); }, 8000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") saveGame();
+});
+window.addEventListener("pagehide", saveGame);
+
+const keys = {};
+window.addEventListener("keydown", e => {
+  const typing = document.activeElement && (document.activeElement.tagName === "TEXTAREA" || document.activeElement.tagName === "INPUT");
+  if (typing) return;
+  keys[e.key.toLowerCase()] = true;
+  if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase())) e.preventDefault();
+});
+window.addEventListener("keyup", e => {
+  const typing = document.activeElement && (document.activeElement.tagName === "TEXTAREA" || document.activeElement.tagName === "INPUT");
+  if (typing) return;
+  keys[e.key.toLowerCase()] = false;
+});
+
+// Touch-Steuerung: D-Pad-Tasten setzen dieselben "keys", die auch die
+// Tastatur nutzt, damit die Bewegungslogik unverändert bleibt.
+document.getElementById("touchControls").classList.add("show");
+
+// Mausbedienung pro Knopf (Desktop-Test), Touch wird weiter unten
+// zentral über die tatsächliche Fingerposition gesteuert.
+document.querySelectorAll(".dpad-btn").forEach(btn => {
+  const key = btn.dataset.key;
+  const press = ev => { ev.preventDefault(); keys[key] = true; btn.classList.add("active"); };
+  const release = ev => { if (ev) ev.preventDefault(); keys[key] = false; btn.classList.remove("active"); };
+  btn.addEventListener("mousedown", press);
+  btn.addEventListener("mouseup", release);
+  btn.addEventListener("mouseleave", release);
+});
+
+// Touch-D-Pad: statt einzelner Knopf-Events wird laufend geprüft, unter
+// welchem Knopf der Finger sich GERADE befindet. Das verhindert, dass eine
+// Richtung "hängen bleibt", wenn der Finger beim Wischen kurz auf den
+// Nachbarknopf rutscht (auf dem iPad sehr leicht der Fall).
+const dpadEl = document.querySelector(".dpad");
+let activeDpadKey = null;
+
+function setDpadKey(newKey){
+  if (newKey === activeDpadKey) return;
+  if (activeDpadKey){
+    keys[activeDpadKey] = false;
+    const oldBtn = dpadEl.querySelector('.dpad-btn[data-key="' + activeDpadKey + '"]');
+    if (oldBtn) oldBtn.classList.remove("active");
+  }
+  if (newKey){
+    keys[newKey] = true;
+    const newBtn = dpadEl.querySelector('.dpad-btn[data-key="' + newKey + '"]');
+    if (newBtn) newBtn.classList.add("active");
+  }
+  activeDpadKey = newKey;
+}
+
+function dpadKeyAtPoint(x, y){
+  const el = document.elementFromPoint(x, y);
+  const btn = el && el.closest && el.closest(".dpad-btn");
+  return btn ? btn.dataset.key : null;
+}
+
+dpadEl.addEventListener("touchstart", ev => {
+  ev.preventDefault();
+  const t = ev.touches[0];
+  setDpadKey(dpadKeyAtPoint(t.clientX, t.clientY));
+}, { passive: false });
+
+dpadEl.addEventListener("touchmove", ev => {
+  ev.preventDefault();
+  const t = ev.touches[0];
+  setDpadKey(dpadKeyAtPoint(t.clientX, t.clientY));
+}, { passive: false });
+
+dpadEl.addEventListener("touchend", ev => {
+  ev.preventDefault();
+  setDpadKey(null);
+}, { passive: false });
+
+dpadEl.addEventListener("touchcancel", ev => {
+  ev.preventDefault();
+  setDpadKey(null);
+}, { passive: false });
+
+const actionBtn = document.getElementById("actionBtn");
+function handleActionPress(ev){
+  ev.preventDefault();
+  actionBtn.classList.add("active");
+  interact();
+}
+function handleActionRelease(ev){
+  if (ev) ev.preventDefault();
+  actionBtn.classList.remove("active");
+}
+actionBtn.addEventListener("touchstart", handleActionPress, { passive: false });
+actionBtn.addEventListener("touchend", handleActionRelease, { passive: false });
+actionBtn.addEventListener("mousedown", handleActionPress);
+actionBtn.addEventListener("mouseup", handleActionRelease);
+
+function rectsOverlap(a, b){
+  return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+}
+function footRect(feetX, feetY){
+  return { x: feetX - FOOT_W/2, y: feetY - FOOT_H, w: FOOT_W, h: FOOT_H };
+}
+
+function collides(feetX, feetY){
+  const rect = footRect(feetX, feetY);
+  for (const o of OBSTACLES){ if (rectsOverlap(rect, o)) return true; }
+  if (!gateOpen && rectsOverlap(rect, GATE_BARRIER)) return true;
+  return false;
+}
+
+function updatePlayer(){
+  if (dialogueOpen || journalOpen || flugblattOpen || textTaskOpen || noticeboardChoiceOpen) return;
+  let dx = 0, dy = 0;
+  if (keys["arrowleft"] || keys["a"]) dx = -player.speed;
+  if (keys["arrowright"] || keys["d"]) dx = player.speed;
+  if (keys["arrowup"] || keys["w"]) dy = -player.speed;
+  if (keys["arrowdown"] || keys["s"]) dy = player.speed;
+
+  let actuallyMoved = false;
+
+  if (dx !== 0){
+    player.facingLeft = dx < 0;
+    playerDirection = "side";
+    const nx = Math.max(FOOT_W/2, Math.min(WORLD_W - FOOT_W/2, player.x + dx));
+    if (!collides(nx, player.y)){ player.x = nx; actuallyMoved = true; }
+  } else if (dy < 0){
+    playerDirection = "back";
+  } else if (dy > 0){
+    playerDirection = "front";
+  }
+  if (dy !== 0){
+    const ny = Math.max(FOOT_H, Math.min(WORLD_H, player.y + dy));
+    if (!collides(player.x, ny)){ player.y = ny; actuallyMoved = true; }
+  }
+
+  updatePlayerAnimation(actuallyMoved);
+}
+
+const camera = { x: 0, y: 0 };
+function updateCamera(){
+  const viewWorldW = VIEW_W / ZOOM;
+  const viewWorldH = VIEW_H / ZOOM;
+  camera.x = Math.max(0, Math.min(WORLD_W - viewWorldW, player.x - viewWorldW/2));
+  camera.y = Math.max(0, Math.min(WORLD_H - viewWorldH, player.y - viewWorldH/2));
+}
+
+/* =========================================================
+   TEIL 5: WISSENSBUCH, DIALOGE, NPC- UND DEPOT-INTERAKTION
+   ========================================================= */
+
+const collected = { ausloeser: new Set(), verlauf: new Set(), ergebnis: new Set() };
+const factsById = {};
+NPCS.forEach(n => { factsById[n.id] = n; });
+
+const inventory = { coin: false, weapon: false };
+let breadAttempted = false;
+// Unabhängiger Fortschritt für die Boten-Zusatzaufgabe: not_started -> hinted -> flyer_read -> quiz_passed
+let boteStage = "not_started";
+let bauerStage = "not_started";
+let flugblattOpen = false;
+let currentFlugblattFor = null;
+let textTaskOpen = false;
+const journalAnswers = {}; // { npcId: { fragenId: "Antworttext" } }
+
+let toastTimer = null;
+function showToast(text){
+  const el = document.getElementById("toast");
+  el.textContent = text;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+function updateGateState(){
+  const factsOk = collected.ausloeser.size >= REQUIRED_FACTS.ausloeser &&
+                  collected.verlauf.size >= REQUIRED_FACTS.verlauf;
+  gateOpen = factsOk && (!WEAPON_REQUIRED || inventory.weapon);
+}
+
+const ALL_NPCS = NPCS.concat([GATE_GUARD, COMMANDANT]).map(n => {
+  const p = scalePoint({x:n.ox, y:n.oy});
+  return { ...n, x: p.x, y: p.y, paletteKey: n.palette };
+});
+
+let dialogueOpen = false;
+let journalOpen = false;
+let currentDialogue = null;
+let gameState = "start";
+
+const dlgBox = document.getElementById("dialogueBox");
+const dlgName = document.getElementById("dlgName");
+const dlgText = document.getElementById("dlgText");
+
+function openDialogue(name, lines, onComplete){
+  dialogueOpen = true;
+  currentDialogue = { lines, index: 0, onComplete: onComplete || null };
+  dlgName.textContent = name;
+  dlgText.textContent = lines[0];
+  dlgBox.style.display = "block";
+}
+
+function advanceDialogue(){
+  if (!dialogueOpen || !currentDialogue) return;
+  currentDialogue.index++;
+  if (currentDialogue.index >= currentDialogue.lines.length){
+    dialogueOpen = false;
+    dlgBox.style.display = "none";
+    const cb = currentDialogue.onComplete;
+    currentDialogue = null;
+    if (cb) cb();
+  } else {
+    dlgText.textContent = currentDialogue.lines[currentDialogue.index];
+  }
+}
+
+function guardLines(){
+  if (gateOpen){
+    return [
+      "Ihr habt genug in Erfahrung gebracht und seid bewaffnet.",
+      "Die Wachen sind zu wenige, um die Menge aufzuhalten. Geht hinein, wenn ihr euch traut."
+    ];
+  }
+  const totalNothing = collected.ausloeser.size === 0 && collected.verlauf.size === 0 &&
+                        !inventory.coin && !inventory.weapon && !coinFound;
+  if (totalNothing){
+    return [
+      "Halt! Niemand kommt hier so einfach hinein.",
+      "Wenn ihr wirklich etwas bewirken wollt: Sprecht mit den vier Menschen hier auf dem Platz.",
+      "Haltet außerdem Ausschau nach einer versteckten Münze und einem Waffendepot.",
+      "Erst mit genug Wissen und Musketen lasse ich euch durch."
+    ];
+  }
+  const missing = [];
+  if (collected.ausloeser.size < REQUIRED_FACTS.ausloeser){
+    missing.push("mit allen Menschen auf dem Platz gesprochen (" + collected.ausloeser.size + "/" + REQUIRED_FACTS.ausloeser + ")");
+  }
+  if (collected.verlauf.size < REQUIRED_FACTS.verlauf){
+    missing.push("genug über die Ereignisse dieser Tage in Erfahrung gebracht (" + collected.verlauf.size + "/" + REQUIRED_FACTS.verlauf + ")");
+  }
+  const lines = ["Halt! Noch nicht."];
+  if (missing.length) lines.push("Ihr habt noch nicht " + missing.join(" und ") + ".");
+  if (WEAPON_REQUIRED && !inventory.weapon){
+    lines.push("Und ohne Musketen aus dem versteckten Waffendepot kommt ihr hier sowieso nicht vorbei.");
+  }
+  return lines;
+}
+
+const REACH = 26;
+function nearDistance(ax, ay, bx, by){ return Math.hypot(ax-bx, ay-by); }
+
+function findNearbyNPC(){
+  let best = null, bestD = REACH;
+  for (const npc of ALL_NPCS){
+    if (npc.id === "launay" && !gateOpen) continue;
+    const d = nearDistance(player.x, player.y, npc.x, npc.y);
+    if (d < bestD){ bestD = d; best = npc; }
+  }
+  return best;
+}
+
+function findNearbyDepot(){
+  if (nearDistance(player.x, player.y, DEPOT_REAL.x, DEPOT_REAL.y) < REACH) return "real";
+  if (nearDistance(player.x, player.y, DEPOT_DECOY.x, DEPOT_DECOY.y) < REACH) return "decoy";
+  return null;
+}
+
+function findNearbyCoinSpot(){
+  for (let i = 0; i < COIN_SPOTS.length; i++){
+    const s = COIN_SPOTS[i];
+    if (nearDistance(player.x, player.y, s.x, s.y) < REACH) return i;
+  }
+  return null;
+}
+
+function findNearbyNoticeboard(){
+  return nearDistance(player.x, player.y, NOTICEBOARD_SPOT.x, NOTICEBOARD_SPOT.y) < REACH;
+}
+
+const flugblattOverlay = document.getElementById("flugblattOverlay");
+
+function showFlugblattContent(fb, forWho){
+  document.getElementById("flugblattTitle").textContent = fb.title;
+  document.getElementById("flugblattQuote").textContent = fb.quote;
+  document.getElementById("flugblattSource").textContent = fb.source;
+  const tasksEl = document.getElementById("flugblattTasks");
+  tasksEl.innerHTML = "";
+  fb.tasks.forEach(t => {
+    const li = document.createElement("li");
+    li.textContent = t;
+    tasksEl.appendChild(li);
+  });
+  flugblattOpen = true;
+  currentFlugblattFor = forWho;
+  flugblattOverlay.classList.add("show");
+}
+
+let noticeboardChoiceOpen = false;
+const noticeboardChoiceOverlay = document.getElementById("noticeboardChoiceOverlay");
+
+function openFlugblatt(){
+  const available = [];
+  if (boteStage === "hinted") available.push({ fb: FLUGBLATT, forWho: "bote" });
+  if (bauerStage === "hinted") available.push({ fb: FLUGBLATT_2, forWho: "bauer" });
+
+  if (available.length === 0){
+    if (boteStage === "not_started" && bauerStage === "not_started"){
+      openDialogue("Anschlagbrett", ["Hier hängen ein paar Bekanntmachungen, aber nichts scheint gerade wichtig zu sein."], null);
+    } else {
+      openDialogue("Anschlagbrett", ["Hier hängt gerade nichts Neues für dich."], null);
+    }
+    return;
+  }
+  if (available.length === 1){
+    showFlugblattContent(available[0].fb, available[0].forWho);
+    return;
+  }
+  // Mehr als ein Flugblatt verfügbar: Auswahl anzeigen.
+  const choicesEl = document.getElementById("noticeboardChoices");
+  choicesEl.innerHTML = "";
+  available.forEach(item => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.style.textAlign = "left";
+    b.textContent = item.fb.title;
+    b.addEventListener("click", () => {
+      noticeboardChoiceOpen = false;
+      noticeboardChoiceOverlay.classList.remove("show");
+      showFlugblattContent(item.fb, item.forWho);
+    });
+    choicesEl.appendChild(b);
+  });
+  noticeboardChoiceOpen = true;
+  noticeboardChoiceOverlay.classList.add("show");
+}
+
+function closeFlugblatt(){
+  flugblattOpen = false;
+  flugblattOverlay.classList.remove("show");
+  if (currentFlugblattFor === "bote" && boteStage === "hinted") boteStage = "flyer_read";
+  if (currentFlugblattFor === "bauer" && bauerStage === "hinted") bauerStage = "flyer_read";
+  const wasEpilog = currentFlugblattFor === "epilog";
+  currentFlugblattFor = null;
+  if (wasEpilog){
+    openTextTask(DESMOULINS_QUESTIONS, (answers) => {
+      journalAnswers.epilog = answers;
+      saveGame();
+      startQuiz();
+    });
+  }
+}
+document.getElementById("closeFlugblattBtn").addEventListener("click", closeFlugblatt);
+
+/* Textaufgaben-System: offene Eingabefelder statt Multiple-Choice.
+   Antworten werden gespeichert und im Wissensbuch angezeigt. */
+let textTaskQuestions = [];
+let textTaskIndex = 0;
+let textTaskAnswers = {};
+let textTaskOnFinish = null;
+const textTaskOverlay = document.getElementById("textTaskOverlay");
+const textTaskHeading = document.getElementById("textTaskHeading");
+const textTaskPrompt = document.getElementById("textTaskPrompt");
+const textTaskInput = document.getElementById("textTaskInput");
+const textTaskNextBtn = document.getElementById("textTaskNextBtn");
+
+function openTextTask(questions, onFinish){
+  textTaskQuestions = questions;
+  textTaskIndex = 0;
+  textTaskAnswers = {};
+  textTaskOnFinish = onFinish;
+  textTaskOpen = true;
+  textTaskOverlay.classList.add("show");
+  renderTextTaskQuestion();
+}
+function renderTextTaskQuestion(){
+  const q = textTaskQuestions[textTaskIndex];
+  textTaskHeading.textContent = "Frage " + (textTaskIndex+1) + " von " + textTaskQuestions.length;
+  textTaskPrompt.textContent = q.prompt;
+  textTaskInput.value = "";
+  textTaskNextBtn.textContent = (textTaskIndex === textTaskQuestions.length-1) ? "Fertig" : "Weiter";
+  setTimeout(() => textTaskInput.focus(), 50);
+}
+textTaskNextBtn.addEventListener("click", () => {
+  const q = textTaskQuestions[textTaskIndex];
+  const val = textTaskInput.value.trim();
+  textTaskAnswers[q.id] = val || "(keine Antwort)";
+  textTaskIndex++;
+  if (textTaskIndex < textTaskQuestions.length){
+    renderTextTaskQuestion();
+  } else {
+    textTaskOpen = false;
+    textTaskOverlay.classList.remove("show");
+    const cb = textTaskOnFinish;
+    textTaskOnFinish = null;
+    if (cb) cb(textTaskAnswers);
+  }
+});
+
+
+const EMPTY_SPOT_LINES = [
+  "Nur Staub und ein paar alte Lumpen.",
+  "Leer – jemand war wohl schneller.",
+  "Nichts als modriges Stroh.",
+  "Nur ein paar Nägel und Splitter.",
+  "Ein altes, löchriges Tuch – sonst nichts.",
+  "Leer bis auf ein paar Spinnweben."
+];
+
+function searchCoinSpot(index){
+  if (index === coinSpotWithCoin && !coinFound){
+    coinFound = true;
+    openDialogue("Durchsucht", ["Zwischen altem Gerümpel: eine einzelne Münze!"], () => {
+      inventory.coin = true;
+      updateHud();
+    });
+  } else if (index === coinSpotWithCoin && coinFound){
+    openDialogue("Durchsucht", ["Hier war die Münze – die hast du schon eingesteckt."], null);
+  } else {
+    const line = EMPTY_SPOT_LINES[index % EMPTY_SPOT_LINES.length];
+    openDialogue("Durchsucht", [line], null);
+  }
+}
+
+function searchDepot(type){
+  if (type === "real"){
+    if (inventory.weapon){
+      openDialogue("Verstecktes Waffendepot", ["Hier war es – die Musketen habt ihr bereits eingesammelt."], null);
+    } else {
+      openDialogue("Verstecktes Waffendepot", [
+        "In der hinteren Kiste versteckt: mehrere Musketen!",
+        "Genug, um sich den Wachen der Bastille entgegenzustellen."
+      ], () => { inventory.weapon = true; updateGateState(); updateHud(); });
+    }
+  } else {
+    openDialogue("Fässer durchsucht", ["Nur leere Fässer und etwas verschüttetes Mehl. Hier gibt es nichts Brauchbares."], null);
+  }
+}
+
+function interact(){
+  if (textTaskOpen || noticeboardChoiceOpen) return;
+  if (flugblattOpen){ closeFlugblatt(); return; }
+  if (dialogueOpen){ advanceDialogue(); return; }
+  if (journalOpen) return;
+  if (gameState !== "playing") return;
+
+  const npc = findNearbyNPC();
+  if (!npc){
+    const depot = findNearbyDepot();
+    if (depot){ searchDepot(depot); return; }
+    const coinSpot = findNearbyCoinSpot();
+    if (coinSpot !== null){ searchCoinSpot(coinSpot); return; }
+    if (findNearbyNoticeboard()){ openFlugblatt(); return; }
+    return;
+  }
+
+  if (npc.id === "torwache"){
+    openDialogue(npc.name, guardLines(), null);
+    return;
+  }
+  if (npc.id === "launay"){
+    openDialogue(npc.name, [
+      "Ihr wollt die Bastille also wirklich einnehmen...",
+      "Ich habe keine Wahl mehr. Nehmt die Festung — ich ergebe mich."
+    ], startEnding);
+    return;
+  }
+  if (npc.id === "bauer"){
+    if (bauerStage === "not_started"){
+      openDialogue(npc.name, npc.dialogue.concat([
+        "Ach, könntest du mir einen Gefallen tun? Ich kann leider nicht lesen. Am Anschlagbrett hängt wohl etwas über die Forderungen armer Dörfer wie meinem – schau's dir an und erzähl mir, was drinsteht."
+      ]), () => {
+        collected.ausloeser.add("bauer");
+        updateGateState();
+        updateHud();
+        bauerStage = "hinted";
+      });
+    } else if (bauerStage === "hinted"){
+      openDialogue(npc.name, ["Hast du das Blatt am Anschlagbrett schon gefunden? Lies es dir gut durch, dann erzähl's mir."], null);
+    } else if (bauerStage === "flyer_read"){
+      openDialogue(npc.name, ["Also, was fordern die Leute aus den armen Dörfern wie meinem? Erzähl's mir in ein paar Worten."], () => {
+        openTextTask(BAUER_QUESTIONS, (answers) => {
+          journalAnswers.bauer = answers;
+          bauerStage = "answered";
+          saveGame();
+          showToast("Antworten gespeichert");
+        });
+      });
+    } else {
+      openDialogue(npc.name, ["Danke, dass du mir das erklärt hast."], null);
+    }
+    return;
+  }
+  if (npc.id === "baeckerin"){
+    if (!inventory.coin){
+      openDialogue(npc.name, [
+        "Wer bist du denn? Ich hab keine Zeit für Leute, die nur herumstehen und nichts kaufen wollen.",
+        "Komm wieder, wenn du wenigstens eine Münze in der Tasche hast."
+      ], null);
+    } else if (!collected.ausloeser.has("baeckerin")){
+      openDialogue(npc.name, npc.dialogue, () => {
+        collected.ausloeser.add("baeckerin");
+        updateGateState();
+        updateHud();
+      });
+    } else if (!breadAttempted){
+      openDialogue(npc.name, [
+        "Du legst deine einzige Münze auf den Tresen und bittest um ein Brot.",
+        "Die Bäckerin schüttelt traurig den Kopf: „Das reicht nicht einmal für ein halbes Brot, mein Kind.“",
+        "„Die Preise sind explodiert. Selbst mit Arbeit kann meine eigene Familie sich kaum noch Brot leisten.“"
+      ], () => {
+        breadAttempted = true;
+        inventory.coin = false;
+        updateHud();
+      });
+    } else {
+      openDialogue(npc.name, ["Geht vorsichtig, die Stimmung in der Stadt ist angespannt."], null);
+    }
+    return;
+  }
+
+  if (npc.id === "bote"){
+    if (boteStage === "not_started"){
+      openDialogue(npc.name, npc.dialogue.concat([
+        "Am Anschlagbrett hängt außerdem ein Flugblatt – lies es dir genau durch, das solltest du kennen."
+      ]), () => { boteStage = "hinted"; });
+    } else if (boteStage === "hinted"){
+      openDialogue(npc.name, ["Hast du das Flugblatt am Anschlagbrett schon gelesen? Schau's dir an, dann komm nochmal zu mir."], null);
+    } else if (boteStage === "flyer_read"){
+      openDialogue(npc.name, ["Na, was stand drauf? Schreib mir kurz auf, was du verstanden hast."], () => {
+        openTextTask(BOTE_QUESTIONS, (answers) => {
+          journalAnswers.bote = answers;
+          boteStage = "quiz_passed";
+          collected.verlauf.add("bote");
+          updateGateState();
+          updateHud();
+          showToast("Antworten gespeichert");
+        });
+      });
+    } else {
+      openDialogue(npc.name, ["Danke nochmal für deine Aufmerksamkeit. Die Sache mit der Nationalversammlung bleibt wichtig."], null);
+    }
+    return;
+  }
+  if (npc.id === "buergerin"){
+    if (!collected.ausloeser.has("buergerin")){
+      openDialogue(npc.name, npc.dialogue, () => {
+        collected.ausloeser.add("buergerin");
+        updateGateState();
+        updateHud();
+        openTextTask(BUERGERIN_QUESTIONS, (answers) => {
+          journalAnswers.buergerin = answers;
+          saveGame();
+          showToast("Antworten gespeichert");
+        });
+      });
+    } else {
+      openDialogue(npc.name, ["Denk mal über die Gewaltenteilung nach – das wird noch wichtig werden."], null);
+    }
+    return;
+  }
+  if (npc.id === "adliger"){
+    if (!collected.ausloeser.has("adliger")){
+      openDialogue(npc.name, npc.dialogue, () => {
+        collected.ausloeser.add("adliger");
+        updateGateState();
+        updateHud();
+        openTextTask(ADLIGER_QUESTIONS, (answers) => {
+          journalAnswers.adliger = answers;
+          saveGame();
+          showToast("Antwort gespeichert");
+        });
+      });
+    } else {
+      openDialogue(npc.name, ["Nun ja, wir werden sehen, wie sich die Lage entwickelt."], null);
+    }
+    return;
+  }
+
+  openDialogue(npc.name, npc.dialogue, () => {
+    collected[npc.category].add(npc.id);
+    updateGateState();
+    updateHud();
+  });
+}
+
+document.addEventListener("keydown", e => {
+  const typing = document.activeElement && (document.activeElement.tagName === "TEXTAREA" || document.activeElement.tagName === "INPUT");
+  if (typing) return;
+  const k = e.key.toLowerCase();
+  if (k === " "){ e.preventDefault(); interact(); }
+  if (k === "i"){ toggleJournal(); }
+  if (k === "escape" && journalOpen){ toggleJournal(); }
+});
+dlgBox.addEventListener("click", interact);
+
+const journalPanel = document.getElementById("journalPanel");
+function toggleJournal(){
+  if (gameState !== "playing" && gameState !== "done" && !journalOpen) return;
+  journalOpen = !journalOpen;
+  journalPanel.classList.toggle("show", journalOpen);
+  if (journalOpen) renderJournal();
+}
+document.getElementById("openJournalBtn").addEventListener("click", toggleJournal);
+document.getElementById("closeJournalBtn").addEventListener("click", toggleJournal);
+
+function renderJournal(){
+  const tipsEl = document.getElementById("journalTips");
+  const tips = [];
+  tips.push("<b>Auslöser:</b> " + collected.ausloeser.size + "/" + REQUIRED_FACTS.ausloeser + " Personen auf dem Platz befragt.");
+  tips.push("<b>Verlauf:</b> " + collected.verlauf.size + "/" + REQUIRED_FACTS.verlauf + " Ereignisse in Erfahrung gebracht.");
+  tips.push("<b>Münze:</b> " + (inventory.coin ? "in deiner Tasche." : (coinFound ? "schon ausgegeben." : "noch nicht gefunden – durchsuche Fässer und Kisten.")));
+  tips.push("<b>Musketen:</b> " + (inventory.weapon ? "gefunden." : "noch nicht gefunden – irgendwo gibt es ein Waffendepot."));
+  if (gateOpen){
+    tips.push("Das Bastille-Tor ist offen – sprich mit der Wache, um hineinzugehen.");
+  } else {
+    tips.push("Sprich mit der Wache am Tor, wenn du nicht mehr weiterweißt.");
+  }
+  tipsEl.innerHTML = tips.join("<br>");
+
+  const cols = { ausloeser: document.getElementById("journalAusloeser"),
+                 verlauf: document.getElementById("journalVerlauf"),
+                 ergebnis: document.getElementById("journalErgebnis") };
+  Object.keys(cols).forEach(cat => {
+    const container = cols[cat];
+    container.innerHTML = "";
+    const ids = NPCS.filter(n => n.category === cat).map(n => n.id);
+    ids.forEach(id => {
+      const npc = factsById[id];
+      const div = document.createElement("div");
+      if (collected[cat].has(id)){
+        div.className = "fact-entry";
+        div.innerHTML = "<b>" + npc.factTitle + "</b>" + npc.factText;
+        if (journalAnswers[id]){
+          const ansBlock = document.createElement("div");
+          ansBlock.className = "journal-answers";
+          const label = document.createElement("b");
+          const sourceTitle = id === "bote" ? FLUGBLATT.title : id === "bauer" ? FLUGBLATT_2.title : id === "buergerin" ? "Gespräch mit Sophie: Gewaltenteilung" : id === "adliger" ? "Gespräch mit dem Grafen: Abstimmung nach Ständen oder Köpfen" : "";
+          label.textContent = "Deine Notizen (" + sourceTitle + "):";
+          ansBlock.appendChild(label);
+          const questionSet = id === "bote" ? BOTE_QUESTIONS : id === "bauer" ? BAUER_QUESTIONS : id === "buergerin" ? BUERGERIN_QUESTIONS : id === "adliger" ? ADLIGER_QUESTIONS : [];
+          questionSet.forEach((q) => {
+            const item = document.createElement("div");
+            item.className = "journal-answer-item";
+            const qLine = document.createElement("div");
+            qLine.className = "journal-answer-question";
+            qLine.textContent = "F: " + q.prompt;
+            const aLine = document.createElement("div");
+            aLine.className = "journal-answer-text";
+            aLine.textContent = "A: " + (journalAnswers[id][q.id] || "");
+            item.appendChild(qLine);
+            item.appendChild(aLine);
+            ansBlock.appendChild(item);
+          });
+          div.appendChild(ansBlock);
+        }
+      } else {
+        div.className = "fact-entry locked";
+        if (id === "bote"){
+          if (boteStage === "not_started") div.textContent = "??? – sprich mit dem Boten.";
+          else if (boteStage === "hinted") div.textContent = "??? – lies das Flugblatt am Anschlagbrett.";
+          else if (boteStage === "flyer_read") div.textContent = "??? – geh zurück zum Boten und beantworte seine Fragen.";
+        } else {
+          div.textContent = "??? – sprich mit den Menschen auf dem Platz.";
+        }
+      }
+      container.appendChild(div);
+    });
+    if (cat === "ergebnis"){
+      const div = document.createElement("div");
+      if (collected.ergebnis.has("launay")){
+        div.className = "fact-entry";
+        div.innerHTML = "<b>Der Sturm auf die Bastille</b>" + ENDING_SLIDES.join(" ");
+        if (journalAnswers.epilog){
+          const ansBlock = document.createElement("div");
+          ansBlock.className = "journal-answers";
+          const label = document.createElement("b");
+          label.textContent = "Deine Notizen (" + FLUGBLATT_DESMOULINS.title + "):";
+          ansBlock.appendChild(label);
+          DESMOULINS_QUESTIONS.forEach((q) => {
+            const item = document.createElement("div");
+            item.className = "journal-answer-item";
+            const qLine = document.createElement("div");
+            qLine.className = "journal-answer-question";
+            qLine.textContent = "F: " + q.prompt;
+            const aLine = document.createElement("div");
+            aLine.className = "journal-answer-text";
+            aLine.textContent = "A: " + (journalAnswers.epilog[q.id] || "");
+            item.appendChild(qLine);
+            item.appendChild(aLine);
+            ansBlock.appendChild(item);
+          });
+          div.appendChild(ansBlock);
+        }
+      } else {
+        div.className = "fact-entry locked";
+        div.textContent = "??? – das erfährst du erst am Ende des Sturms.";
+      }
+      container.appendChild(div);
+    }
+  });
+}
+
+/* =========================================================
+   AUTOSPEICHERUNG (localStorage)
+   Sichert Fortschritt automatisch, damit ein App-Wechsel oder
+   Neuladen auf dem iPad nicht alles löscht.
+   ========================================================= */
+const SAVE_KEY = "bastilleSpielSave_v1";
+
+function saveGame(){
+  try {
+    const safeGameState = (gameState === "playing" || gameState === "done") ? gameState : "playing";
+    const data = {
+      v: 1,
+      playerX: player.x,
+      playerY: player.y,
+      playerDirection: playerDirection,
+      inventory: inventory,
+      collected: {
+        ausloeser: [...collected.ausloeser],
+        verlauf: [...collected.verlauf],
+        ergebnis: [...collected.ergebnis]
+      },
+      boteStage: boteStage,
+      bauerStage: bauerStage,
+      breadAttempted: breadAttempted,
+      coinFound: coinFound,
+      coinSpotWithCoin: coinSpotWithCoin,
+      journalAnswers: journalAnswers,
+      gameState: safeGameState
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn("Speichern nicht möglich:", e);
+  }
+}
+
+function loadGame(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    player.x = data.playerX;
+    player.y = data.playerY;
+    playerDirection = data.playerDirection || "front";
+    Object.assign(inventory, data.inventory);
+    collected.ausloeser = new Set(data.collected.ausloeser);
+    collected.verlauf = new Set(data.collected.verlauf);
+    collected.ergebnis = new Set(data.collected.ergebnis);
+    boteStage = data.boteStage || "not_started";
+    bauerStage = data.bauerStage || "not_started";
+    breadAttempted = !!data.breadAttempted;
+    coinFound = !!data.coinFound;
+    if (typeof data.coinSpotWithCoin === "number") coinSpotWithCoin = data.coinSpotWithCoin;
+    Object.keys(data.journalAnswers || {}).forEach(k => { journalAnswers[k] = data.journalAnswers[k]; });
+    gameState = data.gameState === "done" ? "done" : "playing";
+    updateGateState();
+    updateHud();
+    return true;
+  } catch (e) {
+    console.warn("Laden nicht möglich:", e);
+    return false;
+  }
+}
+
+function clearSave(){
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+}
+
+function hasSave(){
+  try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
+}
+
+function updateHud(){
+  document.getElementById("countAusloeser").textContent = collected.ausloeser.size + "/" + REQUIRED_FACTS.ausloeser;
+  document.getElementById("countVerlauf").textContent = collected.verlauf.size + "/" + REQUIRED_FACTS.verlauf;
+  document.getElementById("countErgebnis").textContent = collected.ergebnis.size + "/1";
+  document.getElementById("coinPill").classList.toggle("active", inventory.coin);
+  document.getElementById("weaponPill").classList.toggle("active", inventory.weapon);
+  saveGame();
+}
+
+/* =========================================================
+   TEIL 6: ENDE, ABSPANN, QUIZ
+   ========================================================= */
+
+const endingOverlay = document.getElementById("endingOverlay");
+const endingText = document.getElementById("endingText");
+const endingNextBtn = document.getElementById("endingNextBtn");
+let endingIndex = 0;
+
+function startEnding(){
+  collected.ergebnis.add("launay");
+  updateHud();
+  gameState = "ending";
+  endingIndex = 0;
+  endingText.textContent = ENDING_SLIDES[0];
+  endingNextBtn.textContent = ENDING_SLIDES.length > 1 ? "Weiter" : "Zum Nachwort";
+  endingOverlay.classList.add("show");
+}
+endingNextBtn.addEventListener("click", () => {
+  endingIndex++;
+  if (endingIndex < ENDING_SLIDES.length){
+    endingText.textContent = ENDING_SLIDES[endingIndex];
+    endingNextBtn.textContent = (endingIndex === ENDING_SLIDES.length-1) ? "Zum Nachwort" : "Weiter";
+  } else {
+    endingOverlay.classList.remove("show");
+    showFlugblattContent(FLUGBLATT_DESMOULINS, "epilog");
+  }
+});
+
+const quizOverlay = document.getElementById("quizOverlay");
+const quizHeading = document.getElementById("quizHeading");
+const quizQuestion = document.getElementById("quizQuestion");
+const quizOptions = document.getElementById("quizOptions");
+const quizResult = document.getElementById("quizResult");
+let quizIndex = 0;
+let quizScore = 0;
+let currentQuizSet = QUIZ;
+let onQuizFinish = null;
+
+function startQuiz(){
+  startQuizGeneric(QUIZ, (score, total) => {
+    quizHeading.textContent = "Ergebnis";
+    quizQuestion.textContent = "";
+    quizOptions.innerHTML = "";
+    quizResult.style.display = "block";
+    quizResult.innerHTML = "<p style='font-size:16px;'>Du hast " + score + " von " + total + " Fragen richtig beantwortet.</p>" +
+      "<p style='font-size:13px;color:#8f8a7c;'>Öffne dein Wissensbuch jederzeit erneut, um Auslöser, Verlauf und Ergebnis noch einmal nachzulesen.</p>";
+    gameState = "done";
+  });
+}
+
+function startQuizGeneric(questions, onFinish){
+  currentQuizSet = questions;
+  onQuizFinish = onFinish;
+  gameState = "quiz";
+  quizIndex = 0;
+  quizScore = 0;
+  quizResult.style.display = "none";
+  quizOverlay.classList.add("show");
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const item = currentQuizSet[quizIndex];
+  quizHeading.textContent = "Frage " + (quizIndex+1) + " von " + currentQuizSet.length;
+  quizQuestion.textContent = item.q;
+  quizOptions.innerHTML = "";
+  item.options.forEach((opt, i) => {
+    const b = document.createElement("button");
+    b.className = "btn";
+    b.style.textAlign = "left";
+    b.textContent = opt;
+    b.addEventListener("click", () => answerQuiz(i));
+    quizOptions.appendChild(b);
+  });
+}
+
+function answerQuiz(i){
+  const item = currentQuizSet[quizIndex];
+  const buttons = quizOptions.querySelectorAll("button");
+  buttons.forEach(b => b.disabled = true);
+  if (i === item.correct){
+    quizScore++;
+    buttons[i].style.borderColor = "#5c8a4a";
+  } else {
+    buttons[i].style.borderColor = "#a8342a";
+    buttons[item.correct].style.borderColor = "#5c8a4a";
+  }
+  setTimeout(() => {
+    quizIndex++;
+    if (quizIndex < currentQuizSet.length){
+      renderQuizQuestion();
+    } else {
+      finishQuiz();
+    }
+  }, 1100);
+}
+
+function finishQuiz(){
+  const cb = onQuizFinish;
+  onQuizFinish = null;
+  if (cb) cb(quizScore, currentQuizSet.length);
+}
+
+/* =========================================================
+   TEIL 7: START, GAME LOOP, RENDERING
+   ========================================================= */
+
+if (hasSave()){
+  document.getElementById("saveFoundBox").style.display = "block";
+  document.getElementById("continueBtn").style.display = "inline-block";
+}
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  clearSave();
+  document.getElementById("startOverlay").classList.remove("show");
+  gameState = "playing";
+  updateHud();
+});
+
+document.getElementById("continueBtn").addEventListener("click", () => {
+  const ok = loadGame();
+  document.getElementById("startOverlay").classList.remove("show");
+  if (!ok){ gameState = "playing"; updateHud(); }
+});
+
+function render(){
+  ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+  ctx.save();
+  ctx.scale(ZOOM, ZOOM);
+  ctx.translate(-camera.x, -camera.y);
+
+  drawWorldBackground();
+
+  const viewWorldW = VIEW_W / ZOOM;
+  const viewWorldH = VIEW_H / ZOOM;
+  const visible = ALL_NPCS.filter(npc => {
+    if (npc.id === "launay" && !gateOpen) return false;
+    return npc.x > camera.x - 60 && npc.x < camera.x + viewWorldW + 60 &&
+           npc.y > camera.y - 80 && npc.y < camera.y + viewWorldH + 80;
+  });
+  visible.push({ x: player.x, y: player.y, facingLeft: player.facingLeft, isPlayer: true, direction: playerDirection, frame: playerFrameIndex });
+  visible.sort((a, b) => a.y - b.y);
+
+  visible.forEach(e => {
+    if (e.isPlayer){
+      drawPlayerFrame(ctx, e.direction, e.frame, e.x, e.y, e.facingLeft || false);
+    } else {
+      drawCharacter(ctx, e.paletteKey, e.x, e.y, e.facingLeft || false);
+    }
+  });
+
+  FOREGROUND_OVERLAYS.forEach(o => {
+    if (o.loaded) ctx.drawImage(o.img, o.rect.x, o.rect.y, o.rect.w, o.rect.h);
+  });
+
+  ctx.restore();
+
+  if (gameState === "playing" && !dialogueOpen && !journalOpen && !flugblattOpen && !textTaskOpen && !noticeboardChoiceOpen){
+    const npc = findNearbyNPC();
+    const depot = npc ? null : findNearbyDepot();
+    const coinSpot = (npc || depot !== null) ? null : findNearbyCoinSpot();
+    const notice = (npc || depot !== null || coinSpot !== null) ? false : findNearbyNoticeboard();
+    const label = npc ? ("Leertaste: mit " + npc.name + " sprechen")
+                : depot ? "Leertaste: durchsuchen"
+                : coinSpot !== null ? "Leertaste: durchsuchen"
+                : notice ? "Leertaste: Anschlagbrett lesen"
+                : null;
+    if (label){
+      ctx.fillStyle = "rgba(20,19,17,0.8)";
+      ctx.font = "12px Inter, sans-serif";
+      const tw = ctx.measureText(label).width;
+      const bx = VIEW_W/2 - tw/2 - 10;
+      ctx.fillRect(bx, VIEW_H-70, tw+20, 26);
+      ctx.fillStyle = "#efe6d3";
+      ctx.textAlign = "center";
+      ctx.fillText(label, VIEW_W/2, VIEW_H-52);
+    }
+  }
+}
+
+function loop(){
+  if (gameState === "playing"){
+    updatePlayer();
+    updateCamera();
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+updateHud();
+loop();
+</script>
+</body>
+</html>
