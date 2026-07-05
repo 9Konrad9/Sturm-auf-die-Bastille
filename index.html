@@ -371,7 +371,8 @@ const NPCS = [
     dialogue: [
       "Wir haben Gewehre aus der Invalidenkaserne geholt – aber ohne Pulver nützen sie nichts!",
       "Man sagt, in der Bastille lagert Pulver. Und Gefangene, die der König dort ohne Prozess festhält.",
-      "Die Bastille ist außerdem ein Symbol der königlichen Willkürherrschaft. Dorthin müssen wir!"
+      "Die Bastille ist außerdem ein Symbol der königlichen Willkürherrschaft. Dorthin müssen wir!",
+      "Und glaub nicht, wir wären nur ein wilder Haufen: Schreiner, Kaufleute, Wirte, sogar übergelaufene Soldaten der Französischen Garde sind dabei. Wir wissen genau, was wir tun."
     ]
   }
 ];
@@ -389,6 +390,13 @@ const ENDING_SLIDES = [
 
 // Anschlagbrett: Ort der Flugblätter für die Zusatzaufgaben von Bote und Bauer.
 const NOTICEBOARD_SPOT_ORIG = { x: 2100, y: 830 };
+
+// Kleines Easter Egg – kein Einfluss aufs Spiel, nur zum Schmunzeln.
+const EASTER_EGG_SPOT_ORIG = { x: 1600, y: 1050 };
+
+const MENGE_QUESTIONS = [
+  { id: "zusammensetzung", prompt: "Erkläre, warum die Vorstellung einer wilden, unorganisierten Menge die Erstürmer der Bastille nicht richtig beschreibt." }
+];
 
 const FLUGBLATT = {
   title: "Flugblatt: Was ist der Dritte Stand?",
@@ -632,7 +640,7 @@ Object.keys(ASSET_OVERRIDES).forEach(key => {
 });
 
 // Hintergrundbild des Platzes. Datei "paris_level1.png" liegt im assets-Ordner.
-const BACKGROUND_SRC = "assets/paris_level1.png";
+const BACKGROUND_SRC = "assets/paris_level1.jpg";
 const backgroundImg = new Image();
 let backgroundLoaded = false;
 backgroundImg.onload = () => { backgroundLoaded = true; };
@@ -753,6 +761,7 @@ let coinFound = false;
 
 const DEPOT_DECOY = scalePoint(DEPOT_DECOY_ORIG);
 const NOTICEBOARD_SPOT = scalePoint(NOTICEBOARD_SPOT_ORIG);
+const EASTER_EGG_SPOT = scalePoint(EASTER_EGG_SPOT_ORIG);
 const DEPOT_REAL = scalePoint(DEPOT_REAL_ORIG);
 
 const FOREGROUND_OVERLAYS = FOREGROUND_OVERLAYS_ORIG.map(o => {
@@ -1086,6 +1095,10 @@ function findNearbyNoticeboard(){
   return nearDistance(player.x, player.y, NOTICEBOARD_SPOT.x, NOTICEBOARD_SPOT.y) < REACH;
 }
 
+function findNearbyEasterEgg(){
+  return nearDistance(player.x, player.y, EASTER_EGG_SPOT.x, EASTER_EGG_SPOT.y) < REACH;
+}
+
 const flugblattOverlay = document.getElementById("flugblattOverlay");
 
 function showFlugblattContent(fb, forWho){
@@ -1287,6 +1300,13 @@ function interact(){
     const coinSpot = findNearbyCoinSpot();
     if (coinSpot !== null){ searchCoinSpot(coinSpot); return; }
     if (findNearbyNoticeboard()){ openFlugblatt(); return; }
+    if (findNearbyEasterEgg()){
+      openDialogue("???", [
+        "Du entdeckst eine kleine, unhistorische Zeitreise: eine Portion Pommes zwischen den Pflastersteinen.",
+        "Sehr verdächtig für 1789... aber ein Gruß an alle 'Pommes' da draußen! 🍟"
+      ], null);
+      return;
+    }
     return;
   }
 
@@ -1412,6 +1432,23 @@ function interact(){
     }
     return;
   }
+  if (npc.id === "menge"){
+    if (!collected.verlauf.has("menge")){
+      openDialogue(npc.name, npc.dialogue, () => {
+        collected.verlauf.add("menge");
+        updateGateState();
+        updateHud();
+        openTextTask(MENGE_QUESTIONS, (answers) => {
+          journalAnswers.menge = answers;
+          saveGame();
+          showToast("Antwort gespeichert");
+        });
+      });
+    } else {
+      openDialogue(npc.name, ["Bleib in der Nähe, es geht bald los."], null);
+    }
+    return;
+  }
 
   openDialogue(npc.name, npc.dialogue, () => {
     collected[npc.category].add(npc.id);
@@ -1534,10 +1571,10 @@ function renderJournal(){
           const ansBlock = document.createElement("div");
           ansBlock.className = "journal-answers";
           const label = document.createElement("b");
-          const sourceTitle = id === "bote" ? FLUGBLATT.title : id === "bauer" ? FLUGBLATT_2.title : id === "buergerin" ? FLUGBLATT_MONTESQUIEU.title : id === "adliger" ? "Gespräch mit dem Grafen: Abstimmung nach Ständen oder Köpfen" : "";
+          const sourceTitle = id === "bote" ? FLUGBLATT.title : id === "bauer" ? FLUGBLATT_2.title : id === "buergerin" ? FLUGBLATT_MONTESQUIEU.title : id === "adliger" ? "Gespräch mit dem Grafen: Abstimmung nach Ständen oder Köpfen" : id === "menge" ? "Gespräch: Wer stürmte die Bastille?" : "";
           label.textContent = "Deine Notizen (" + sourceTitle + "):";
           ansBlock.appendChild(label);
-          const questionSet = id === "bote" ? BOTE_QUESTIONS : id === "bauer" ? BAUER_QUESTIONS : id === "buergerin" ? BUERGERIN_QUESTIONS : id === "adliger" ? ADLIGER_QUESTIONS : [];
+          const questionSet = id === "bote" ? BOTE_QUESTIONS : id === "bauer" ? BAUER_QUESTIONS : id === "buergerin" ? BUERGERIN_QUESTIONS : id === "adliger" ? ADLIGER_QUESTIONS : id === "menge" ? MENGE_QUESTIONS : [];
           questionSet.forEach((q) => {
             const item = document.createElement("div");
             item.className = "journal-answer-item";
