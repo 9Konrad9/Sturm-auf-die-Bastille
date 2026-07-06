@@ -986,6 +986,8 @@ let breadAttempted = false;
 // Unabhängiger Fortschritt für die Boten-Zusatzaufgabe: not_started -> hinted -> flyer_read -> quiz_passed
 let boteStage = "not_started";
 let bauerStage = "not_started";
+// Ob die Einleitung schon gezeigt wurde (verhindert Wiederholung nach "Später beantworten").
+const introShown = { buergerin: false, adliger: false, menge: false };
 let flugblattOpen = false;
 let currentFlugblattFor = null;
 const docsSeen = { bote: false, bauer: false, buergerin: false, epilog: false };
@@ -1186,7 +1188,9 @@ function closeFlugblatt(){
   if (wasBuergerin){
     openTextTask(BUERGERIN_QUESTIONS, (answers) => {
       journalAnswers.buergerin = answers;
-      saveGame();
+      collected.ausloeser.add("buergerin");
+      updateGateState();
+      updateHud();
       showToast("Antworten gespeichert");
     }, FLUGBLATT_MONTESQUIEU);
   }
@@ -1332,9 +1336,6 @@ function interact(){
       openDialogue(npc.name, npc.dialogue.concat([
         "Ach, könntest du mir einen Gefallen tun? Ich kann leider nicht lesen. Am Anschlagbrett hängt wohl etwas über die Forderungen armer Dörfer wie meinem – schau's dir an und erzähl mir, was drinsteht."
       ]), () => {
-        collected.ausloeser.add("bauer");
-        updateGateState();
-        updateHud();
         bauerStage = "hinted";
       });
     } else if (bauerStage === "hinted"){
@@ -1344,7 +1345,9 @@ function interact(){
         openTextTask(BAUER_QUESTIONS, (answers) => {
           journalAnswers.bauer = answers;
           bauerStage = "answered";
-          saveGame();
+          collected.ausloeser.add("bauer");
+          updateGateState();
+          updateHud();
           showToast("Antworten gespeichert");
         }, FLUGBLATT_2);
       });
@@ -1405,49 +1408,71 @@ function interact(){
     return;
   }
   if (npc.id === "buergerin"){
-    if (!collected.ausloeser.has("buergerin")){
+    if (journalAnswers.buergerin){
+      openDialogue(npc.name, ["Denk mal über die Gewaltenteilung nach – das wird noch wichtig werden."], null);
+    } else if (!introShown.buergerin){
       openDialogue(npc.name, npc.dialogue, () => {
-        collected.ausloeser.add("buergerin");
-        updateGateState();
-        updateHud();
+        introShown.buergerin = true;
         showFlugblattContent(FLUGBLATT_MONTESQUIEU, "buergerin");
       });
     } else {
-      openDialogue(npc.name, ["Denk mal über die Gewaltenteilung nach – das wird noch wichtig werden."], null);
+      openDialogue(npc.name, ["Hier, lies dir das nochmal in Ruhe durch:"], () => {
+        showFlugblattContent(FLUGBLATT_MONTESQUIEU, "buergerin");
+      });
     }
     return;
   }
   if (npc.id === "adliger"){
-    if (!collected.ausloeser.has("adliger")){
+    if (journalAnswers.adliger){
+      openDialogue(npc.name, ["Nun ja, wir werden sehen, wie sich die Lage entwickelt."], null);
+    } else if (!introShown.adliger){
       openDialogue(npc.name, npc.dialogue, () => {
-        collected.ausloeser.add("adliger");
-        updateGateState();
-        updateHud();
+        introShown.adliger = true;
         openTextTask(ADLIGER_QUESTIONS, (answers) => {
           journalAnswers.adliger = answers;
-          saveGame();
+          collected.ausloeser.add("adliger");
+          updateGateState();
+          updateHud();
           showToast("Antwort gespeichert");
         });
       });
     } else {
-      openDialogue(npc.name, ["Nun ja, wir werden sehen, wie sich die Lage entwickelt."], null);
+      openDialogue(npc.name, ["Nun, was hatte ich gesagt? Schreib's mir nochmal auf."], () => {
+        openTextTask(ADLIGER_QUESTIONS, (answers) => {
+          journalAnswers.adliger = answers;
+          collected.ausloeser.add("adliger");
+          updateGateState();
+          updateHud();
+          showToast("Antwort gespeichert");
+        });
+      });
     }
     return;
   }
   if (npc.id === "menge"){
-    if (!collected.verlauf.has("menge")){
+    if (journalAnswers.menge){
+      openDialogue(npc.name, ["Bleib in der Nähe, es geht bald los."], null);
+    } else if (!introShown.menge){
       openDialogue(npc.name, npc.dialogue, () => {
-        collected.verlauf.add("menge");
-        updateGateState();
-        updateHud();
+        introShown.menge = true;
         openTextTask(MENGE_QUESTIONS, (answers) => {
           journalAnswers.menge = answers;
-          saveGame();
+          collected.verlauf.add("menge");
+          updateGateState();
+          updateHud();
           showToast("Antwort gespeichert");
         });
       });
     } else {
-      openDialogue(npc.name, ["Bleib in der Nähe, es geht bald los."], null);
+      openDialogue(npc.name, ["Na, was meinst du – waren wir wirklich nur ein wilder Haufen? Schreib's mir auf."], () => {
+        openTextTask(MENGE_QUESTIONS, (answers) => {
+          journalAnswers.menge = answers;
+          collected.verlauf.add("menge");
+          updateGateState();
+          updateHud();
+          showToast("Antwort gespeichert");
+        });
+      });
     }
     return;
   }
@@ -1599,6 +1624,16 @@ function renderJournal(){
           if (boteStage === "not_started") div.textContent = "??? – sprich mit dem Boten.";
           else if (boteStage === "hinted") div.textContent = "??? – lies das Flugblatt am Anschlagbrett.";
           else if (boteStage === "flyer_read") div.textContent = "??? – geh zurück zum Boten und beantworte seine Fragen.";
+        } else if (id === "bauer"){
+          if (bauerStage === "not_started") div.textContent = "??? – sprich mit Jean, dem Bauern.";
+          else if (bauerStage === "hinted") div.textContent = "??? – lies das Flugblatt am Anschlagbrett.";
+          else if (bauerStage === "flyer_read") div.textContent = "??? – geh zurück zu Jean und beantworte seine Fragen.";
+        } else if (id === "buergerin"){
+          div.textContent = !introShown.buergerin ? "??? – sprich mit Sophie." : "??? – geh zurück zu Sophie und beantworte ihre Fragen.";
+        } else if (id === "adliger"){
+          div.textContent = !introShown.adliger ? "??? – sprich mit dem Grafen." : "??? – geh zurück zum Grafen und beantworte seine Frage.";
+        } else if (id === "menge"){
+          div.textContent = !introShown.menge ? "??? – sprich mit den Menschen auf dem Platz." : "??? – geh zurück und beantworte die Frage.";
         } else {
           div.textContent = "??? – sprich mit den Menschen auf dem Platz.";
         }
@@ -1684,7 +1719,8 @@ function saveGame(){
       journalAnswers: journalAnswers,
       gameState: safeGameState,
       gameCompleted: gameCompleted,
-      docsSeen: docsSeen
+      docsSeen: docsSeen,
+      introShown: introShown
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   } catch (e) {
@@ -1714,6 +1750,7 @@ function loadGame(){
     gameState = "playing";
     gameCompleted = !!data.gameCompleted;
     if (data.docsSeen) Object.assign(docsSeen, data.docsSeen);
+    if (data.introShown) Object.assign(introShown, data.introShown);
     updateGateState();
     updateHud();
     return true;
